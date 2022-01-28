@@ -4,13 +4,13 @@ mod examples;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let url = "https://chrysalis-nodes.iota.org";
+    let url = "http://0.0.0.0:14265";
 
     println!("Starting Examples");
     println!("---------------------------------------");
     println!("Single Publisher Examples");
 
-    println!("\n---------------------------------------");
+    /* println!("\n---------------------------------------");
     println!("\nPublic - Single Branch - Single Publisher\n");
     examples::single_branch_public::example(url).await?;
 
@@ -35,12 +35,12 @@ async fn main() -> Result<()> {
 
     println!("\n---------------------------------------");
     println!("\nPrivate - Multi Branch - Single Publisher per Branch\n");
-    examples::single_pub_per_branch::example(url).await?;
+    examples::single_pub_per_branch::example(url).await?; */
 
     println!("\n---------------------------------------");
     println!("\nPrivate - Multi Branch - Multiple Publishers per Branch\n");
     examples::multi_pub_per_branch::example(url).await?;
-
+/* 
     println!("\n---------------------------------------");
     println!("Utility Examples");
 
@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
 
     println!("\n---------------------------------------");
     println!("\nStateless Recovery\n");
-    examples::stateless_recovery::example(url).await?;
+    examples::stateless_recovery::example(url).await?; */
 
     println!("\n---------------------------------------");
     println!("Examples Complete");
