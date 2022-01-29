@@ -1,6 +1,7 @@
 use anyhow::Result;
 
 mod examples;
+mod witness_rep;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -40,6 +41,13 @@ async fn main() -> Result<()> {
     println!("\n---------------------------------------");
     println!("\nPrivate - Multi Branch - Multiple Publishers per Branch\n");
     examples::multi_pub_per_branch::example(url).await?;
+
+/*     println!("\n---------------------------------------");
+    println!("\nTransaction simulation\n");
+    witness_rep::all_in_one_transaction::transact(url).await?; */
+
+
+
 /* 
     println!("\n---------------------------------------");
     println!("Utility Examples");
