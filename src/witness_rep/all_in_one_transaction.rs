@@ -149,26 +149,26 @@ pub async fn transact(node_url: &str) -> Result<()> {
     //////
     
     let tx_message = vec![
-        "TN_A's signed witnesses",
-        "TN_B's signed witnesses",
-        "..."
+        "{
+            \'tn_a_sw\': \'TN_A's signed witnesses\',
+            \'tn_b_sw\': \'TN_B's signed witnesses\',
+        }"
     ];
 
     let mut prev_msg_link = keyload_a_link;
-    for i in 0..tx_message.len() {
-        // before sending any messages, a publisher in a multi publisher channel should sync their state
-        // to ensure they are up to date
-        tn_a.sync_state().await;
+    // before sending any messages, a publisher in a multi publisher channel should sync their state
+    // to ensure they are up to date
+    tn_a.sync_state().await;
 
-        // TN_A sends the transaction
-        let (msg_link, _) = tn_a.send_signed_packet(
-            &prev_msg_link,
-            &Bytes::default(),
-            &Bytes(tx_message[i].as_bytes().to_vec()),
-        ).await?;
-        println!("Sent msg from TN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-        prev_msg_link = msg_link;
-    }
+    // TN_A sends the transaction
+    let (msg_link, _) = tn_a.send_signed_packet(
+        &prev_msg_link,
+        &Bytes::default(),
+        &Bytes(tx_message[0].as_bytes().to_vec()),
+    ).await?;
+    println!("Sent msg from TN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+    prev_msg_link = msg_link;
+
 
     //////
     ////    STAGE 12 - WITNESSES SEE THE TRANSACTION IS UPLOADED
