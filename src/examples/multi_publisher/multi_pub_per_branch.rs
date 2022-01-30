@@ -16,26 +16,7 @@ use iota_streams::app::message::HasLink;
  * will only post/read from their individual branches
 */
 pub async fn example(node_url: &str) -> Result<()> {
-        
-    //////
-    ////    PREREQUISITES 1 (CURRENT) - HAVE A NETWORK OF CLIENTS CONNECTED TO NODES
-    //////
-
-    // cloned for each node; only for testing purposes where all participants are using the same node
-    let client = Client::new_from_url(node_url);
-
-    // create participants on the simulated network
-    let mut tn_a = Subscriber::new("Transacting Node A", client.clone());
-    let mut wn_a = Subscriber::new("Witness Node A", client.clone());
-    let mut wn_b = Subscriber::new("Witness Node B", client.clone());
-    
-    //////
-    ////    PREREQUISITES 2 (CURRENT) - ON_A ALREADY HAS A CHANNEL SET UP TO BE USED BY CLIENTS FOR THIS PURPOSE
-    ////                                (CLIENTS MEANING THE ORGANIZATION'S CLIENTS, AS OPOSSED TO TANGLE CLIENT)
-    ////    PREREQUISITES 3 (CURRENT) - TN_A, ON_A'S CLIENT, IS ALREADY A SUBSCRIBER OF ON_A'S CHANNEL
-    //////
-    
-    // on_a generates a unique seed for the author
+    // Generate a unique seed for the author
     let seed: &str = &(0..81)
         .map(|_| {
             ALPH9
@@ -44,224 +25,127 @@ pub async fn example(node_url: &str) -> Result<()> {
                 .unwrap()
         })
         .collect::<String>();
-    
-    // on_a creates the channel
-    let mut on_a = Author::new(seed, ChannelType::MultiBranch, client.clone());
-    let announcement_link = on_a.send_announce().await?;
+
+    // Create the Transport Client
+    let client = Client::new_from_url(node_url);
+
+    // Generate an Author
+    let mut author = Author::new(seed, ChannelType::MultiBranch, client.clone());
+
+    // Create the channel with an announcement message. Make sure to save the resulting link somewhere,
+    let announcement_link = author.send_announce().await?;
+    // This link acts as a root for the channel itself
     let ann_link_string = announcement_link.to_string();
     println!(
         "Announcement Link: {}\nTangle Index: {:#}\n",
         ann_link_string, announcement_link.to_msg_index()
     );
 
-    // tn_a processes the channel announcement
-    let ann_address = Address::from_bytes(&announcement_link.to_bytes());
-    tn_a.receive_announcement(&ann_address).await?;
-    
-    // tn_a sends subscription message; these are the subscription links that
-    // should be provided to the Author to complete subscription
-    let subscribe_msg_tn_a = tn_a.send_subscribe(&ann_address).await?;
-    let sub_msg_tn_a_str = subscribe_msg_tn_a.to_string();
-    println!(
-        "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
-        sub_msg_tn_a_str, subscribe_msg_tn_a.to_msg_index()
-    );
-
-    // author processes the subscription message
-    let sub_a_address = Address::from_bytes(&subscribe_msg_tn_a.to_bytes());
-    on_a.receive_subscribe(&sub_a_address).await?;
-    
-    //////  **non-current stages are skipped/assumed** 
-    ////    STAGE 1 - TN_A CHECKS TO SEE IF THERE ARE AVAILABLE WITNESSES (WITHOUT COMMITING TO ANYTHING)
-    ////    STAGE 2 - TN_A REQUESTS TO TRANSACT WITH TN_B, TN_B ACCEPTS
-    ////    STAGE 3 - TN_A AND TN_B FIND WITNESSES TO COMMIT TO THIS TRANSACTION
-    ////    STAGE 4 - TN_A AND TN_B EXCHANGE WITNESSES
-    ////    STAGE 5 - TN_B SIGNS THE WITNESSES+CONTRACT, SENDS THIS TO TN_A. TN_A ALSO SIGNS HIS VERSION. 
-    ////    STAGE 6 - TN_A SENDS THE TRANSACTION TO ON_A FOR APPROVAL, ON_A APPROVES
-    ////    STAGE 7 (CURRENT) - WITNESSES SUBSCRIBE TO CHANNEL, AUTHOR ACCEPTS
-    //////
-    
-    // witnesses process the channel announcement
-    let ann_address = Address::from_bytes(&announcement_link.to_bytes());
-    wn_a.receive_announcement(&ann_address).await?;
-    wn_b.receive_announcement(&ann_address).await?;
-    
-    // witnesses send subscription messages
-    let subscribe_msg_wn_a = wn_a.send_subscribe(&ann_address).await?;
-    let subscribe_msg_wn_b = wn_b.send_subscribe(&ann_address).await?;
-    let sub_msg_wn_a_str = subscribe_msg_wn_a.to_string();
-    let sub_msg_wn_b_str = subscribe_msg_wn_a.to_string();
-    println!(
-        "Subscription msgs:\n\tSubscriber WN_A: {}\n\tTangle Index: {:#}\n",
-        sub_msg_wn_a_str, subscribe_msg_wn_a.to_msg_index()
-    );
-    println!(
-        "Subscription msgs:\n\tSubscriber WN_B: {}\n\tTangle Index: {:#}\n",
-        sub_msg_wn_b_str, subscribe_msg_wn_b.to_msg_index()
-    );
-
-    // Note that: sub_a = tn_a, sub_b = wn_a, sub_c = wn_b
-    let sub_b_address = Address::from_bytes(&subscribe_msg_wn_a.to_bytes());
-    let sub_c_address = Address::from_bytes(&subscribe_msg_wn_b.to_bytes());
-    on_a.receive_subscribe(&sub_b_address).await?;
-    on_a.receive_subscribe(&sub_c_address).await?;
-
-    
-    //////
-    ////    STAGE 9  - GET THE PUBKEYS OF THE WITNESSES FROM THEM THROUGH TN_A
-    ////              (BECAUSE THE PUBKEYS OF AUTHOR/SUB OBJECTS ARE DIFFERENT TO NODE PUBKEYS)
-    ////    STAGE 10 (CURRENT) - ON_A SENDS A KEYLOAD FOR THIS TRANSACTION (INCLUDING TN_A AND WITNESSES)
-    //////  
-
-    // fetch subscriber public keys (for use by author in issuing a keyload);
-    // we'll also use this to sort messages on the retrieval end
-    let tn_a_pk = tn_a.get_public_key().as_bytes();
-    let wn_a_pk = wn_a.get_public_key().as_bytes();
-    let wn_b_pk = wn_b.get_public_key().as_bytes();
-    let pks = vec![
-        PublicKey::from_bytes(tn_a_pk)?,
-        PublicKey::from_bytes(wn_a_pk)?,
-        PublicKey::from_bytes(wn_b_pk)?,
-    ];
-
-    // Author sends keyload with the public keys of TN_A and witnesses to generate a new
-    // branch. This will return a tuple containing the message links. The first is the
-    // message link itself, the second is the sequencing message link.
-    let (keyload_a_link, _seq_a_link) =
-    on_a.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into(), pks[2].into()]).await?;
-    println!(
-        "\nSent Keyload for TN_A and witnesses: {}, tangle index: {:#}",
-        keyload_a_link,
-        _seq_a_link.unwrap()
-    );
-
-    //////
-    ////    STAGE 11 (CURRENT) - TN_A SENDS THE TRANSACTION ON ON_A'S CHANNEL
-    //////
-    
- /*    let tx_message = vec![
-        "TN_A's signed witnesses",
-        "TN_B's signed witnesses",
-        "..."
-    ];
-
-    let mut prev_msg_link = keyload_a_link;
-    for i in 0..tx_message.len() {
-        // before sending any messages, a publisher in a multi publisher channel should sync their state
-        // to ensure they are up to date
-        tn_a.sync_state().await;
-
-        // TN_A sends the transaction
-        let (msg_link, seq_link) = tn_a.send_signed_packet(
-            &prev_msg_link,
-            &Bytes::default(),
-            &Bytes(tx_message[i].as_bytes().to_vec()),
-        ).await?;
-        let seq_link = seq_link.unwrap();
-        println!("Sent msg from TN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-        prev_msg_link = msg_link;
-    } */
-
-
-
-
-
-    
-
-
-
-
-
-    let tx_message = vec![
-        "TN_A's signed witnesses",
-        "TN_B's signed witnesses",
-        "..."
-    ];
-
-    let mut prev_msg_link = keyload_a_link;
-    // ***********************  IMPORTANT  ****************************************
-    // Before sending any messages, a publisher in a multi publisher channel should sync their state
-    // to ensure they are up to date
-    tn_a.sync_state().await;
-
-    // Sub A Sends msg1
-    let (msg_link, _) = tn_a.send_signed_packet(
-        &prev_msg_link,
-        &Bytes::default(),
-        &Bytes(tx_message[0].as_bytes().to_vec()),
-    ).await?;
-    println!("Sent msg from Sub A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-    prev_msg_link = msg_link;
-
-
-    // BUG: BY SENDING THIS SECOND MESSAGE, THE PROGRAM BREAKS WHEN THE SECOND WITNESS TRIES TO
-    // SEND A MESSAGE (Error: Message at link 51ed9ada8702ebb59a7600d7 not found in tangle)
-    // Sub A Sends msg2
-/*     let (msg_link, _) = tn_a.send_signed_packet(
-        &prev_msg_link,
-        &Bytes::default(),
-        &Bytes(tx_message[1].as_bytes().to_vec()),
-    ).await?;
-    println!("Sent msg from Sub A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-    prev_msg_link = msg_link;
- */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     // ------------------------------------------------------------------
     // In their own separate instances generate the subscriber(s) that will be attaching to the channel
 
+    let mut subscriber_a = Subscriber::new("SubscriberA", client.clone());
+    let mut subscriber_b = Subscriber::new("SubscriberB", client.clone());
+    let mut subscriber_c = Subscriber::new("SubscriberC", client.clone());
     let mut subscriber_d = Subscriber::new("SubscriberD", client);
 
     // Generate an Address object from the provided announcement link from the Author
     let ann_address = Address::from_bytes(&announcement_link.to_bytes());
 
     // Receive the announcement message to start listening to the channel
+    subscriber_a.receive_announcement(&ann_address).await?;
+    subscriber_b.receive_announcement(&ann_address).await?;
+    subscriber_c.receive_announcement(&ann_address).await?;
     subscriber_d.receive_announcement(&ann_address).await?;
 
     // Subscribers send subscription messages linked to announcement message
+    let subscribe_msg_a = subscriber_a.send_subscribe(&ann_address).await?;
+    let subscribe_msg_b = subscriber_b.send_subscribe(&ann_address).await?;
+    let subscribe_msg_c = subscriber_c.send_subscribe(&ann_address).await?;
     let subscribe_msg_d = subscriber_d.send_subscribe(&ann_address).await?;
 
     // These are the subscription links that should be provided to the Author to complete subscription
-
+    let sub_msg_a_str = subscribe_msg_a.to_string();
+    let sub_msg_b_str = subscribe_msg_b.to_string();
+    let sub_msg_c_str = subscribe_msg_c.to_string();
     let sub_msg_d_str = subscribe_msg_d.to_string();
 
+    println!(
+        "Subscription msgs:\n\tSubscriber A: {}\n\tTangle Index: {:#}\n",
+        sub_msg_a_str, subscribe_msg_a.to_msg_index()
+    );
+    println!(
+        "\tSubscriber B: {}\n\tTangle Index: {:#}\n",
+        sub_msg_b_str, subscribe_msg_b.to_msg_index()
+    );
+    println!(
+        "\tSubscriber C: {}\n\tTangle Index: {:#}\n",
+        sub_msg_c_str, subscribe_msg_c.to_msg_index()
+    );
     println!(
         "\tSubscriber D: {}\n\tTangle Index: {:#}\n",
         sub_msg_d_str, subscribe_msg_d.to_msg_index()
     );
 
     // Fetch subscriber public keys (for use by author in issuing a keyload)
+    let sub_a_pk = subscriber_a.get_public_key().as_bytes();
+    let sub_b_pk = subscriber_b.get_public_key().as_bytes();
+    let sub_c_pk = subscriber_c.get_public_key().as_bytes();
     let sub_d_pk = subscriber_d.get_public_key().as_bytes();
 
+    // We'll use this to sort messages on the retrieval end
+    let pks = vec![
+        PublicKey::from_bytes(sub_a_pk)?,
+        PublicKey::from_bytes(sub_b_pk)?,
+        PublicKey::from_bytes(sub_c_pk)?,
+        PublicKey::from_bytes(sub_d_pk)?,
+    ];
     // ----------------------------------------------------------------------
+    // Get Address object from subscription message link provided by Subscriber A
+    let sub_a_address = Address::from_bytes(&subscribe_msg_a.to_bytes());
+
+    // Get Address object from subscription message link provided by SubscriberB
+    let sub_b_address = Address::from_bytes(&subscribe_msg_b.to_bytes());
+
+    // Get Address object from subscription message link provided by Subscriber C
+    let sub_c_address = Address::from_bytes(&subscribe_msg_c.to_bytes());
 
     // Get Address object from subscription message link provided by Subscriber C
     let sub_d_address = Address::from_bytes(&subscribe_msg_d.to_bytes());
 
     // Author processes subscription messages
-    on_a.receive_subscribe(&sub_d_address).await?;
+    author.receive_subscribe(&sub_a_address).await?;
+    author.receive_subscribe(&sub_b_address).await?;
+    author.receive_subscribe(&sub_c_address).await?;
+    author.receive_subscribe(&sub_d_address).await?;
+
+    // Expectant users are now ready to be included in Keyload messages
+
+    // Author sends keyload with the public keys of Sub A and B (linked to announcement message) to
+    // generate a new branch. These public keys can be converted to Identifiers with a simple From/
+    // Into conversion. This will return a tuple containing the message links. The first is the
+    // message link itself, the second is the sequencing message link.
+    let (keyload_a_link, _seq_a_link) =
+        author.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into()]).await?;
+    println!(
+        "\nSent Keyload for Sub A and B: {}, tangle index: {:#}",
+        keyload_a_link,
+        _seq_a_link.unwrap()
+    );
+
+    // Author will send the second Keyload with the public key of Subscribers C and D (also linked
+    // to the announcement message) to generate another new branch
+    let (keyload_b_link, _seq_b_link) =
+        author.send_keyload(&announcement_link, &vec![pks[2].into(), pks[3].into()]).await?;
+    println!(
+        "\nSent Keyload for Sub C and D: {}, tangle index: {:#}\n",
+        keyload_b_link,
+        _seq_b_link.unwrap()
+    );
 
     // Subscribers A and B will now send encrypted messages in an alternating chain attached to Keyload A
     let msg_inputs_a = vec![
-        "{
-            output: true,
-            ...
-        }",
+        "These",
         "Messages",
         "Will",
         "Be",
@@ -271,10 +155,7 @@ pub async fn example(node_url: &str) -> Result<()> {
         "A",
     ];
     let msg_inputs_b = vec![
-        "{
-            output: true,
-            ...
-        }",
+        "These",
         "Messages",
         "Will",
         "Be",
@@ -284,40 +165,92 @@ pub async fn example(node_url: &str) -> Result<()> {
         "B",
     ];
 
-    // ***********************  IMPORTANT  ****************************************
-    // Before sending any messages, a publisher in a multi publisher channel should sync their state
-    // to ensure they are up to date
-    wn_a.sync_state().await;
+    let mut prev_msg_link = keyload_a_link;
+    for i in 0..msg_inputs_a.len() {
+        // ***********************  IMPORTANT  ****************************************
+        // Before sending any messages, a publisher in a multi publisher channel should sync their state
+        // to ensure they are up to date
+        subscriber_a.sync_state().await;
 
-    // Sub A Sends
-    let (msg_link, seq_link) = wn_a.send_signed_packet(
-        &prev_msg_link,
-        &Bytes::default(),
-        &Bytes(msg_inputs_a[0].as_bytes().to_vec()),
-    ).await?;
-    let seq_link = seq_link.unwrap();
-    println!("Sent msg from Sub A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-    prev_msg_link = msg_link;
+        // Sub A Sends
+        let (msg_link, seq_link) = subscriber_a.send_signed_packet(
+            &prev_msg_link,
+            &Bytes::default(),
+            &Bytes(msg_inputs_a[i].as_bytes().to_vec()),
+        ).await?;
+        let seq_link = seq_link.unwrap();
+        println!("Sent msg from Sub A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+        prev_msg_link = msg_link;
 
-    // Sub B Sends
-    wn_b.sync_state().await;
-    let (msg_link, seq_link) = wn_b.send_signed_packet(
-        &prev_msg_link,
-        &Bytes::default(),
-        &Bytes(msg_inputs_b[0].as_bytes().to_vec()),
-    ).await?;
-    let seq_link = seq_link.unwrap();
-    println!("Sent msg from Sub B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-    prev_msg_link = msg_link;
+/*         // Sub B Sends
+        subscriber_b.sync_state().await;
+        let (msg_link, seq_link) = subscriber_b.send_signed_packet(
+            &prev_msg_link,
+            &Bytes::default(),
+            &Bytes(msg_inputs_b[i].as_bytes().to_vec()),
+        ).await?;
+        let seq_link = seq_link.unwrap();
+        println!("Sent msg from Sub B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+        prev_msg_link = msg_link; */
+    }
+
+    // Subscribers C and D will now send encrypted messages in an alternating chain attached to Keyload B
+    let msg_inputs_c = vec![
+        "These",
+        "Messages",
+        "Will",
+        "Be",
+        "Sent",
+        "By",
+        "Subscriber",
+        "C",
+    ];
+    let msg_inputs_d = vec![
+        "These",
+        "Messages",
+        "Will",
+        "Be",
+        "Sent",
+        "By",
+        "Subscriber",
+        "D",
+    ];
+
+    prev_msg_link = keyload_b_link;
+    for i in 0..msg_inputs_c.len() {
+        // Sub C Sends
+        subscriber_c.sync_state().await;
+        let (msg_link, seq_link) = subscriber_c.send_signed_packet(
+            &prev_msg_link,
+            &Bytes::default(),
+            &Bytes(msg_inputs_c[i].as_bytes().to_vec()),
+        ).await?;
+        let seq_link = seq_link.unwrap();
+        println!("Sent msg from Sub C: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+        prev_msg_link = msg_link;
+
+        // Sub D Sends
+        subscriber_d.sync_state().await;
+        let (msg_link, seq_link) = subscriber_d.send_signed_packet(
+            &prev_msg_link,
+            &Bytes::default(),
+            &Bytes(msg_inputs_d[i].as_bytes().to_vec()),
+        ).await?;
+        let seq_link = seq_link.unwrap();
+        println!("Sent msg from Sub D: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+        prev_msg_link = msg_link;
+    }
 
     // -----------------------------------------------------------------------------
     // Author can now fetch these messages
-    let mut retrieved = on_a.fetch_all_next_msgs().await;
+    let mut retrieved = author.fetch_all_next_msgs().await;
     println!("\nAuthor found {} messages", retrieved.len());
     let mut retrieved_lists = split_retrieved(&mut retrieved, pks);
     println!("\nVerifying message retrieval: Author");
     verify_messages(&msg_inputs_a, retrieved_lists.remove(0))?;
     verify_messages(&msg_inputs_b, retrieved_lists.remove(0))?;
+    verify_messages(&msg_inputs_c, retrieved_lists.remove(0))?;
+    verify_messages(&msg_inputs_d, retrieved_lists.remove(0))?;
 
     Ok(())
 }

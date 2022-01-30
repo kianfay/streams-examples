@@ -7,11 +7,11 @@ mod witness_rep;
 async fn main() -> Result<()> {
     let url = "http://0.0.0.0:14265";
 
-    println!("Starting Examples");
+    /* println!("Starting Examples");
     println!("---------------------------------------");
     println!("Single Publisher Examples");
 
-    /* println!("\n---------------------------------------");
+    println!("\n---------------------------------------");
     println!("\nPublic - Single Branch - Single Publisher\n");
     examples::single_branch_public::example(url).await?;
 
@@ -38,13 +38,13 @@ async fn main() -> Result<()> {
     println!("\nPrivate - Multi Branch - Single Publisher per Branch\n");
     examples::single_pub_per_branch::example(url).await?; */
 
-    println!("\n---------------------------------------");
-    println!("\nPrivate - Multi Branch - Multiple Publishers per Branch\n");
-    examples::multi_pub_per_branch::example(url).await?;
-
 /*     println!("\n---------------------------------------");
+    println!("\nPrivate - Multi Branch - Multiple Publishers per Branch\n");
+    examples::multi_pub_per_branch::example(url).await?; */
+
+    println!("\n---------------------------------------");
     println!("\nTransaction simulation\n");
-    witness_rep::all_in_one_transaction::transact(url).await?; */
+    witness_rep::all_in_one_transaction::transact(url).await?;
 
 
 
