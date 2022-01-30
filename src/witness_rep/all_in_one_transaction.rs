@@ -20,10 +20,16 @@ use iota_streams::app::message::HasLink;
  *  - Organization node A (ON_A)
  *  - Organization node B (ON_B)
  *
- *  TNA and TNB both gather their witness nodes e.g. TN_A finds WN_A, and TN_B finds WNB_,
+ *  TN_A and TN_B both gather their witness nodes e.g. TN_A finds WN_A, and TN_B finds WNB_,
  *  then by exchangeing the witness node ids, TN_B can create a signiture for the transaction
  *  which it then sends to TN_A, whom then attaches the packet to a tangle message.
- *  TN_A then needs to send the other nodes the message index.
+ *  TN_A then needs to send the other nodes the announcement message.
+ *  Depending on the terms being agreed upon, participants are compensated accordinly.
+ *  e.g. In the car 'entering lane example', TN_A agrees to pay TN_B after the event,
+ *       and both TN's agree to pay up to 5 witness nodes 0.1 IOTA. Thus, if TN_A and TN_B
+ *       both find more than 5 combined, they must agree on which one to eject. After the
+ *       event, the payment occurs. If payment does not occur, this will be obvious when
+ *       scanning the event.
 */
 pub async fn transact(node_url: &str) -> Result<()> {
     
@@ -36,6 +42,7 @@ pub async fn transact(node_url: &str) -> Result<()> {
 
     // create participants on the simulated network
     let mut tn_a = Subscriber::new("Transacting Node A", client.clone());
+    let mut tn_b = Subscriber::new("Transacting Node B", client.clone());
     let mut wn_a = Subscriber::new("Witness Node A", client.clone());
     let mut wn_b = Subscriber::new("Witness Node B", client.clone());
 
@@ -88,19 +95,22 @@ pub async fn transact(node_url: &str) -> Result<()> {
     ////    STAGE 4 - TN_A AND TN_B EXCHANGE WITNESSES
     ////    STAGE 5 - TN_B SIGNS THE WITNESSES+CONTRACT, SENDS THIS TO TN_A. TN_A ALSO SIGNS HIS VERSION. 
     ////    STAGE 6 - TN_A SENDS THE TRANSACTION TO ON_A FOR APPROVAL, ON_A APPROVES
-    ////    STAGE 7 (CURRENT) - WITNESSES SUBSCRIBE TO CHANNEL, AUTHOR ACCEPTS
+    ////    STAGE 7 (CURRENT) - WITNESSES AND TN_B SUBSCRIBE TO CHANNEL, AUTHOR ACCEPTS
     //////
     
     // witnesses process the channel announcement
     let ann_address = Address::from_bytes(&announcement_link.to_bytes());
     wn_a.receive_announcement(&ann_address).await?;
     wn_b.receive_announcement(&ann_address).await?;
+    tn_b.receive_announcement(&ann_address).await?;
     
     // witnesses send subscription messages
     let subscribe_msg_wn_a = wn_a.send_subscribe(&ann_address).await?;
     let subscribe_msg_wn_b = wn_b.send_subscribe(&ann_address).await?;
+    let subscribe_msg_tn_b = tn_b.send_subscribe(&ann_address).await?;
     let sub_msg_wn_a_str = subscribe_msg_wn_a.to_string();
-    let sub_msg_wn_b_str = subscribe_msg_wn_a.to_string();
+    let sub_msg_wn_b_str = subscribe_msg_wn_b.to_string();
+    let sub_msg_tn_b_str = subscribe_msg_tn_b.to_string();
     println!(
         "Subscription msgs:\n\tSubscriber WN_A: {}\n\tTangle Index: {:#}\n",
         sub_msg_wn_a_str, subscribe_msg_wn_a.to_msg_index()
@@ -109,12 +119,18 @@ pub async fn transact(node_url: &str) -> Result<()> {
         "Subscription msgs:\n\tSubscriber WN_B: {}\n\tTangle Index: {:#}\n",
         sub_msg_wn_b_str, subscribe_msg_wn_b.to_msg_index()
     );
+    println!(
+        "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
+        sub_msg_tn_b_str, subscribe_msg_tn_b.to_msg_index()
+    );
 
-    // Note that: sub_a = tn_a, sub_b = wn_a, sub_c = wn_b
+    // Note that: sub_a = tn_a, sub_b = wn_a, sub_c = wn_b, sub_d = tn_b
     let sub_b_address = Address::from_bytes(&subscribe_msg_wn_a.to_bytes());
     let sub_c_address = Address::from_bytes(&subscribe_msg_wn_b.to_bytes());
+    let sub_d_address = Address::from_bytes(&subscribe_msg_tn_b.to_bytes());
     on_a.receive_subscribe(&sub_b_address).await?;
     on_a.receive_subscribe(&sub_c_address).await?;
+    on_a.receive_subscribe(&sub_d_address).await?;
 
     //////
     ////    STAGE 9  - GET THE PUBKEYS OF THE WITNESSES FROM THEM THROUGH TN_A
@@ -127,17 +143,19 @@ pub async fn transact(node_url: &str) -> Result<()> {
     let tn_a_pk = tn_a.get_public_key().as_bytes();
     let wn_a_pk = wn_a.get_public_key().as_bytes();
     let wn_b_pk = wn_b.get_public_key().as_bytes();
+    let tn_b_pk = tn_b.get_public_key().as_bytes();
     let pks = vec![
         PublicKey::from_bytes(tn_a_pk)?,
         PublicKey::from_bytes(wn_a_pk)?,
         PublicKey::from_bytes(wn_b_pk)?,
+        PublicKey::from_bytes(tn_b_pk)?,
     ];
 
     // Author sends keyload with the public keys of TN_A and witnesses to generate a new
     // branch. This will return a tuple containing the message links. The first is the
     // message link itself, the second is the sequencing message link.
     let (keyload_a_link, _seq_a_link) =
-    on_a.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into(), pks[2].into()]).await?;
+    on_a.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into(), pks[2].into(),  pks[3].into()]).await?;
     println!(
         "\nSent Keyload for TN_A and witnesses: {}, tangle index: {:#}",
         keyload_a_link,
@@ -156,11 +174,8 @@ pub async fn transact(node_url: &str) -> Result<()> {
     ];
 
     let mut prev_msg_link = keyload_a_link;
-    // before sending any messages, a publisher in a multi publisher channel should sync their state
-    // to ensure they are up to date
-    tn_a.sync_state().await;
-
     // TN_A sends the transaction
+    tn_a.sync_state().await;
     let (msg_link, _) = tn_a.send_signed_packet(
         &prev_msg_link,
         &Bytes::default(),
@@ -210,10 +225,10 @@ pub async fn transact(node_url: &str) -> Result<()> {
         &Bytes(witness_b_message[0].as_bytes().to_vec()),
     ).await?;
     println!("Sent msg from WN_B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-    //prev_msg_link = msg_link;
+    prev_msg_link = msg_link;
 
     //////
-    ////    STAGE 15 - ALL PARTIES, BOTH INVOLVED AND NOT INVOLVED, CAN NOW SCAN THE TRABSACTION
+    ////    STAGE 15 (CURRENT) - ALL PARTIES, BOTH INVOLVED AND NOT INVOLVED, CAN NOW SCAN THE TRANSACTION
     //////
 
     // -----------------------------------------------------------------------------
@@ -224,6 +239,49 @@ pub async fn transact(node_url: &str) -> Result<()> {
     let mut retrieved_lists = split_retrieved(&mut retrieved, pks);
     println!("\nVerifying message retrieval: Author");
     verify_messages(&tx_message, retrieved_lists.remove(0))?;
+
+    //////
+    ////    STAGE 16 (CURRENT) - RELEVANT NODES COMPENSATE THE PREDEFINED NODES TO BE COMPENSATED
+    //////
+
+    let compensation_tx_tn_a = vec![
+        "{
+            \'pay_to_tn_b\': 0.1,
+            \'pay_to_wn_a\': 0.01,
+            \'pay_to_wn_b\': 0.01,
+        }"
+    ];
+
+    // TN_A sends the compensation transaction
+    tn_a.sync_state().await;
+    let (msg_link, _) = tn_a.send_signed_packet(
+        &prev_msg_link,
+        &Bytes::default(),
+        &Bytes(compensation_tx_tn_a[0].as_bytes().to_vec()),
+    ).await?;
+    println!("Sent msg from TN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+    prev_msg_link = msg_link;
+
+    let compensation_tx_tn_b = vec![
+        "{
+            \'pay_to_wn_a\': 0.01,
+            \'pay_to_wn_b\': 0.01,
+        }"
+    ];
+
+    // TN_B sends the compensation transaction
+    tn_a.sync_state().await;
+    let (msg_link, _) = tn_a.send_signed_packet(
+        &prev_msg_link,
+        &Bytes::default(),
+        &Bytes(compensation_tx_tn_b[0].as_bytes().to_vec()),
+    ).await?;
+    println!("Sent msg from TN_B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+    //prev_msg_link = msg_link;
+
+    //////
+    ////    ------FINISHED------
+    //////
 
     Ok(())
 }
