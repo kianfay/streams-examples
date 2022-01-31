@@ -55,14 +55,7 @@ pub async fn transact(node_url: &str) -> Result<()> {
     //////
     
     // on_a generates a unique seed for the author
-    let seed: &str = &(0..81)
-        .map(|_| {
-            ALPH9
-                .chars()
-                .nth(rand::thread_rng().gen_range(0, 27))
-                .unwrap()
-        })
-        .collect::<String>();
+    let seed: &str = "hey";
     
     // on_a creates the channel
     let mut on_a = Author::new(seed, ChannelType::MultiBranch, client.clone());
