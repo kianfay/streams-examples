@@ -8,6 +8,8 @@ use iota_streams::{
 };
 
 use crate::examples::{verify_messages, ALPH9};
+use crate::witness_rep::messages::{setup_msgs, transaction_msgs};
+use crate::witness_rep::iota_did::{create_and_upload_did};
 use rand::Rng;
 use iota_streams::app::message::HasLink;
 
@@ -72,65 +74,112 @@ pub async fn transact(node_url: &str) -> Result<()> {
     );
 
     // tn_a processes the channel announcement
-    let ann_address = Address::from_bytes(&announcement_link.to_bytes());
-    tn_a.receive_announcement(&ann_address).await?;
-    
-    // tn_a sends subscription message; these are the subscription links that
-    // should be provided to the Author to complete subscription
-    let subscribe_msg_tn_a = tn_a.send_subscribe(&ann_address).await?;
-    let sub_msg_tn_a_str = subscribe_msg_tn_a.to_string();
-    println!(
-        "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
-        sub_msg_tn_a_str, subscribe_msg_tn_a.to_msg_index()
-    );
+    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes());
+    if let Ok(addr) = ann_address {
+        tn_a.receive_announcement(&addr).await?;
 
-    // author processes the subscription message
-    let sub_a_address = Address::from_bytes(&subscribe_msg_tn_a.to_bytes());
-    on_a.receive_subscribe(&sub_a_address).await?;
+        // tn_a sends subscription message; these are the subscription links that
+        // should be provided to the Author to complete subscription
+        let subscribe_msg_tn_a = tn_a.send_subscribe(&addr).await?;
+        let sub_msg_tn_a_str = subscribe_msg_tn_a.to_string();
+        println!(
+            "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
+            sub_msg_tn_a_str, subscribe_msg_tn_a.to_msg_index()
+        );
+
+        // author processes the subscription message
+        let sub_a_address = Address::try_from_bytes(&subscribe_msg_tn_a.to_bytes());
+        if let Ok(addr_on) = sub_a_address {
+            on_a.receive_subscribe(&addr_on).await?;
+        }
+    }
     
     //////  **non-current stages are skipped/assumed** 
     ////    STAGE 1 - TN_A CHECKS TO SEE IF THERE ARE AVAILABLE WITNESSES (WITHOUT COMMITING TO ANYTHING)
-    ////    STAGE 2 - TN_A REQUESTS TO TRANSACT WITH TN_B, TN_B ACCEPTS
+    ////    STAGE 2 (CURRENT) - TN_A REQUESTS TO TRANSACT WITH TN_B, TN_B ACCEPTS
+    //////
+
+
+
+
+
+    //tn_a.user.sig_kp
+
+
+    
+    
+/*     let contract_by_tn_a = transaction_msgs::Contract {
+        contract_definition: String,               
+        participants: TransactingClients,          
+        time: UnixTimestamp,
+        location: CoordinateDMSFormat,
+    }
+
+    let setup_msg = setup_msgs::SetupMessage {
+        contract: Contract,
+        max_witnesses: u32,
+        payment_to_node: f32,
+        max_payment_per_witness: f32,
+    }
+ */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //////
     ////    STAGE 3 - TN_A AND TN_B FIND WITNESSES TO COMMIT TO THIS TRANSACTION
-    ////    STAGE 4 - TN_A AND TN_B EXCHANGE WITNESSES
+    ////    STAGE 4 - TN_A AND TN_B EXCHANGE WITNESSES (INCLUDES AGREEING UPON AND EJECTING EXCESS WITNESSES)
     ////    STAGE 5 - TN_B SIGNS THE WITNESSES+CONTRACT, SENDS THIS TO TN_A. TN_A ALSO SIGNS HIS VERSION. 
     ////    STAGE 6 - TN_A SENDS THE TRANSACTION TO ON_A FOR APPROVAL, ON_A APPROVES
     ////    STAGE 7 (CURRENT) - WITNESSES AND TN_B SUBSCRIBE TO CHANNEL, AUTHOR ACCEPTS
     //////
     
     // witnesses process the channel announcement
-    let ann_address = Address::from_bytes(&announcement_link.to_bytes());
-    wn_a.receive_announcement(&ann_address).await?;
-    wn_b.receive_announcement(&ann_address).await?;
-    tn_b.receive_announcement(&ann_address).await?;
-    
-    // witnesses send subscription messages
-    let subscribe_msg_wn_a = wn_a.send_subscribe(&ann_address).await?;
-    let subscribe_msg_wn_b = wn_b.send_subscribe(&ann_address).await?;
-    let subscribe_msg_tn_b = tn_b.send_subscribe(&ann_address).await?;
-    let sub_msg_wn_a_str = subscribe_msg_wn_a.to_string();
-    let sub_msg_wn_b_str = subscribe_msg_wn_b.to_string();
-    let sub_msg_tn_b_str = subscribe_msg_tn_b.to_string();
-    println!(
-        "Subscription msgs:\n\tSubscriber WN_A: {}\n\tTangle Index: {:#}\n",
-        sub_msg_wn_a_str, subscribe_msg_wn_a.to_msg_index()
-    );
-    println!(
-        "Subscription msgs:\n\tSubscriber WN_B: {}\n\tTangle Index: {:#}\n",
-        sub_msg_wn_b_str, subscribe_msg_wn_b.to_msg_index()
-    );
-    println!(
-        "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
-        sub_msg_tn_b_str, subscribe_msg_tn_b.to_msg_index()
-    );
+    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes());
+    if let Ok(addr) = ann_address {
+        wn_a.receive_announcement(&addr).await?;
+        wn_b.receive_announcement(&addr).await?;
+        tn_b.receive_announcement(&addr).await?;
 
-    // Note that: sub_a = tn_a, sub_b = wn_a, sub_c = wn_b, sub_d = tn_b
-    let sub_b_address = Address::from_bytes(&subscribe_msg_wn_a.to_bytes());
-    let sub_c_address = Address::from_bytes(&subscribe_msg_wn_b.to_bytes());
-    let sub_d_address = Address::from_bytes(&subscribe_msg_tn_b.to_bytes());
-    on_a.receive_subscribe(&sub_b_address).await?;
-    on_a.receive_subscribe(&sub_c_address).await?;
-    on_a.receive_subscribe(&sub_d_address).await?;
+        // witnesses send subscription messages
+        let subscribe_msg_wn_a = wn_a.send_subscribe(&ann_address).await?;
+        let subscribe_msg_wn_b = wn_b.send_subscribe(&ann_address).await?;
+        let subscribe_msg_tn_b = tn_b.send_subscribe(&ann_address).await?;
+        let sub_msg_wn_a_str = subscribe_msg_wn_a.to_string();
+        let sub_msg_wn_b_str = subscribe_msg_wn_b.to_string();
+        let sub_msg_tn_b_str = subscribe_msg_tn_b.to_string();
+        println!(
+            "Subscription msgs:\n\tSubscriber WN_A: {}\n\tTangle Index: {:#}\n",
+            sub_msg_wn_a_str, subscribe_msg_wn_a.to_msg_index()
+        );
+        println!(
+            "Subscription msgs:\n\tSubscriber WN_B: {}\n\tTangle Index: {:#}\n",
+            sub_msg_wn_b_str, subscribe_msg_wn_b.to_msg_index()
+        );
+        println!(
+            "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
+            sub_msg_tn_b_str, subscribe_msg_tn_b.to_msg_index()
+        );
+
+        // Note that: sub_a = tn_a, sub_b = wn_a, sub_c = wn_b, sub_d = tn_b
+        let sub_b_address = Address::from_bytes(&subscribe_msg_wn_a.to_bytes());
+        let sub_c_address = Address::from_bytes(&subscribe_msg_wn_b.to_bytes());
+        let sub_d_address = Address::from_bytes(&subscribe_msg_tn_b.to_bytes());
+        on_a.receive_subscribe(&sub_b_address).await?;
+        on_a.receive_subscribe(&sub_c_address).await?;
+        on_a.receive_subscribe(&sub_d_address).await?;
+    }
 
     //////
     ////    STAGE 9  - GET THE PUBKEYS OF THE WITNESSES FROM THEM THROUGH TN_A
