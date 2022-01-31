@@ -153,9 +153,9 @@ pub async fn transact(node_url: &str) -> Result<()> {
         tn_b.receive_announcement(&addr).await?;
 
         // witnesses send subscription messages
-        let subscribe_msg_wn_a = wn_a.send_subscribe(&ann_address).await?;
-        let subscribe_msg_wn_b = wn_b.send_subscribe(&ann_address).await?;
-        let subscribe_msg_tn_b = tn_b.send_subscribe(&ann_address).await?;
+        let subscribe_msg_wn_a = wn_a.send_subscribe(&addr).await?;
+        let subscribe_msg_wn_b = wn_b.send_subscribe(&addr).await?;
+        let subscribe_msg_tn_b = tn_b.send_subscribe(&addr).await?;
         let sub_msg_wn_a_str = subscribe_msg_wn_a.to_string();
         let sub_msg_wn_b_str = subscribe_msg_wn_b.to_string();
         let sub_msg_tn_b_str = subscribe_msg_tn_b.to_string();
@@ -173,12 +173,15 @@ pub async fn transact(node_url: &str) -> Result<()> {
         );
 
         // Note that: sub_a = tn_a, sub_b = wn_a, sub_c = wn_b, sub_d = tn_b
-        let sub_b_address = Address::from_bytes(&subscribe_msg_wn_a.to_bytes());
-        let sub_c_address = Address::from_bytes(&subscribe_msg_wn_b.to_bytes());
-        let sub_d_address = Address::from_bytes(&subscribe_msg_tn_b.to_bytes());
-        on_a.receive_subscribe(&sub_b_address).await?;
-        on_a.receive_subscribe(&sub_c_address).await?;
-        on_a.receive_subscribe(&sub_d_address).await?;
+        let sub_b_address = Address::try_from_bytes(&subscribe_msg_wn_a.to_bytes());
+        let sub_c_address = Address::try_from_bytes(&subscribe_msg_wn_b.to_bytes());
+        let sub_d_address = Address::try_from_bytes(&subscribe_msg_tn_b.to_bytes());
+
+        if let Ok(addr_on) = ann_address {
+            on_a.receive_subscribe(&addr_on).await?;
+            on_a.receive_subscribe(&addr_on).await?;
+            on_a.receive_subscribe(&addr_on).await?;
+        }
     }
 
     //////
