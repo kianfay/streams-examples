@@ -1,4 +1,4 @@
-use iota_streams::app_channels::api::tangle::{PublicKey};
+use identity::crypto::PublicKey;
 
 //////
 ////	STRUCTURES
@@ -19,15 +19,15 @@ pub struct Contract {
 }
 
 // an array of bytes representing the pubkey of the participant
-pub struct TransactingClients   (Vec<PublicKey>);
-pub struct WitnessClients       (Vec<PublicKey>);
+pub struct TransactingClients   (pub Vec<PublicKey>);
+pub struct WitnessClients       (pub Vec<PublicKey>);
 
 // u64 used for timestamp as u32 runs out in 2038 (2147483647 as unixtime)
-pub struct UnixTimestamp(u64);
+pub type UnixTimestamp = u64;
 
 // CoordinateDMSFormat(North Ordinate, West Ordinate)
-pub struct CoordinateDMSFormat(Ordinate,Ordinate);
-pub struct Ordinate(u16,u16,f32);
+pub type CoordinateDMSFormat = (Ordinate,Ordinate);
+pub type Ordinate = (u16,u16,f32);
 
 // signitures are also simply arrays of bytes
 pub struct Signiture(Vec<u8>);
@@ -36,3 +36,4 @@ pub struct ArrayOfSignitures(Vec<u8>);
 //////
 ////	UTILITY FUNCTIONS
 //////
+

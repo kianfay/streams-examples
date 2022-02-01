@@ -1,15 +1,20 @@
 use iota_streams::{
     app::transport::tangle::client::Client,
     app_channels::api::tangle::{
-        Address, Author, Bytes, ChannelType, MessageContent, PublicKey, Subscriber,
-        UnwrappedMessage,
+        Address, Author, Bytes, ChannelType, MessageContent, Subscriber,
+        UnwrappedMessage, PublicKey
     },
-    core::{println, Result},
+    core::{println, Result}
 };
 
+use std::path::PathBuf;
+//use identity::crypto::PublicKey;
+use identity::account::AccountStorage;
 use crate::examples::{verify_messages, ALPH9};
-use crate::witness_rep::messages::{setup_msgs, transaction_msgs};
-use crate::witness_rep::iota_did::{create_and_upload_did};
+use crate::witness_rep::messages::{ 
+    setup_msgs, transaction_msgs, signatures
+};
+use crate::witness_rep::iota_did::create_and_upload_did::create_n_dids;
 use rand::Rng;
 use iota_streams::app::message::HasLink;
 
@@ -34,7 +39,10 @@ use iota_streams::app::message::HasLink;
  *       scanning the event.
 */
 pub async fn transact(node_url: &str) -> Result<()> {
-    
+
+    // CONSTANTS
+    let DEFAULT_TIMEOUT : u32 = 60*2; // 2 mins
+
     //////
     ////    PREREQUISITES 1 (CURRENT) - HAVE A NETWORK OF CLIENTS CONNECTED TO NODES
     //////
@@ -42,7 +50,9 @@ pub async fn transact(node_url: &str) -> Result<()> {
     // cloned for each node; only for testing purposes where all participants are using the same node
     let client = Client::new_from_url(node_url);
 
-    // create participants on the simulated network
+    // create participants on the simulated network (num values used dynamically below)
+    let num_tn = 2; 
+    let num_wn = 2;
     let mut tn_a = Subscriber::new("Transacting Node A", client.clone());
     let mut tn_b = Subscriber::new("Transacting Node B", client.clone());
     let mut wn_a = Subscriber::new("Witness Node A", client.clone());
@@ -55,7 +65,14 @@ pub async fn transact(node_url: &str) -> Result<()> {
     //////
     
     // on_a generates a unique seed for the author
-    let seed: &str = "hey";
+    let seed: &str = &(0..81)
+        .map(|_| {
+            ALPH9
+                .chars()
+                .nth(rand::thread_rng().gen_range(0, 27))
+                .unwrap()
+        })
+        .collect::<String>();
     
     // on_a creates the channel
     let mut on_a = Author::new(seed, ChannelType::MultiBranch, client.clone());
@@ -92,50 +109,81 @@ pub async fn transact(node_url: &str) -> Result<()> {
     ////    STAGE 2 (CURRENT) - TN_A REQUESTS TO TRANSACT WITH TN_B, TN_B ACCEPTS
     //////
 
-
-
-
-
-    //tn_a.user.sig_kp
-
-
+    // gives us an array of (keypair,doc) variables for the particiants.
+    // these are keypairs that sign the messages, not the author/sub keypair
+    // [0]=TN_A    [1]=TN_B    [2]=WN_A    [3]=WN_B
+/*     let account_stronghold = create_n_dids(4).await?;
     
-    
-/*     let contract_by_tn_a = transaction_msgs::Contract {
-        contract_definition: String,               
-        participants: TransactingClients,          
-        time: UnixTimestamp,
-        location: CoordinateDMSFormat,
-    }
+    let participants = account_stronghold.iter()
+                        .map(|(_,strhld)| {
+                            let stronghold_path: PathBuf = strhld.into();
+                            let password : String = "my-password".into();
+                            let acc = AccountStorage::Stronghold(stronghold_path, Some(password), None);
 
-    let setup_msg = setup_msgs::SetupMessage {
-        contract: Contract,
-        max_witnesses: u32,
-        payment_to_node: f32,
-        max_payment_per_witness: f32,
-    }
- */
+                        })
+                        .collect::<Vec<PublicKey>>();
 
+    let contract_by_tn_a = transaction_msgs::Contract {
+        contract_definition: String::from("tn_b allows tn_a to enter in front of it in the lane tn_b is in"),               
+        participants: transaction_msgs::TransactingClients(participants),      
+        time: 1643572739,
+        location: ((53, 20, 27.036),(6, 15, 2.695)),
+    };
 
-
-
-
-
-
-
-
-
-
-
-
+    // TN_A sends this, and TN_B replies with yes/no answer, or a timeout
+    let setup_msg_by_tn_a = setup_msgs::SetupMessage {
+        contract: contract_by_tn_a,
+        max_witnesses: 5,
+        payment_to_node: 0.1,
+        max_payment_per_witness: 0.01,
+    }; */
 
 
     //////
     ////    STAGE 3 - TN_A AND TN_B FIND WITNESSES TO COMMIT TO THIS TRANSACTION
-    ////    STAGE 4 - TN_A AND TN_B EXCHANGE WITNESSES (INCLUDES AGREEING UPON AND EJECTING EXCESS WITNESSES)
-    ////    STAGE 5 - TN_B SIGNS THE WITNESSES+CONTRACT, SENDS THIS TO TN_A. TN_A ALSO SIGNS HIS VERSION. 
-    ////    STAGE 6 - TN_A SENDS THE TRANSACTION TO ON_A FOR APPROVAL, ON_A APPROVES
-    ////    STAGE 7 (CURRENT) - WITNESSES AND TN_B SUBSCRIBE TO CHANNEL, AUTHOR ACCEPTS
+    ////    STAGE 4 - TN_A AND TN_B EXCHANGE WITNESSES 
+    ////              (INCLUDES AGREEING UPON AND EJECTING EXCESS WITNESSES)
+    ////    STAGE 5 (CURRENT) - WITNESSES SEND IN THEIR SIGNATURES
+    /////
+    
+ /*    let wn_a_pre_sig = signatures::WitnessPreSig {
+        contract: contract_by_tn_a,
+        timeout: DEFAULT_TIMEOUT,
+    };
+
+    let wn_a_pre_sig = signatures::WitnessSig {
+        contract: contract_by_tn_a,
+        timeout: DEFAULT_TIMEOUT,
+        signature: ,
+    };
+     */
+    //////
+    ////    STAGE 6 (CURRENT) - TN_B SIGNS THE WITNESSES+CONTRACT, SENDS THIS TO TN_A. TN_A ALSO SIGNS HIS VERSION. 
+    //////
+
+/*     // num_tn..num_wn is a dynamic way of filtering out the witnesses
+    let witness_pub_keys = account_stronghold.iter()
+                            .enumerate()
+                            .filter(|&(i,_)| (num_tn..num_wn).contains(&i))
+                            .map(|(_,(kp,_))| kp.public())
+                            .collect::<Vec<PublicKey>>()
+                            .map(|x| TransactingClients(x));
+
+    let transaction_msg = transaction_msgs::TransactionMsg {
+        contract: Contract,
+        witnesses: WitnessClients,
+        wit_node_sigs: ArrayOfSignitures,
+        tx_client_sigs: ArrayOfSignitures,
+    } */
+
+    //////
+    ////    STAGE 7 (CURRENT) - TN_A SENDS THE TRANSACTION TO ON_A FOR APPROVAL, ON_A APPROVES
+    //////
+    
+
+
+    //////
+    ////    STAGE 8 (CURRENT) - WITNESSES AND TN_B SUBSCRIBE TO CHANNEL, AUTHOR ACCEPTS
     //////
     
     // witnesses process the channel announcement
