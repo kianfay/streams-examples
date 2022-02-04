@@ -1,27 +1,31 @@
 use crate::witness_rep::messages::transaction_msgs::{Contract, WitnessClients};
+use serde::{Deserialize, Serialize};
 
 // the signature is of the upper fields
 // timeout included to give participants freedom over how long to be exposed
+
+#[derive(Serialize, Deserialize)]
 pub struct WitnessPreSig {
-    contract: Contract,
-    timeout: u32,
+    pub contract: Contract,
+    pub timeout: u32,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct WitnessSig {
-    contract: Contract,
-    timeout: u32,
-    signature: Vec<u8>,
+    pub contract: Contract,
+    pub timeout: u32,
+    pub signature: Vec<u8>,
 }
 
 pub struct TransactingPreSig {
-    contract: Contract,
-    witnesses: WitnessClients,
-    timeout: u32,
+    pub contract: Contract,
+    pub witnesses: WitnessClients,
+    pub timeout: u32,
 }
 
 pub struct TransactingSig {
-    contract: Contract,
-    witnesses: WitnessClients,
-    timeout: u32,
-    signature: Vec<u8>,
+    pub contract: Contract,
+    pub witnesses: WitnessClients,
+    pub timeout: u32,
+    pub signature: Vec<u8>,
 }

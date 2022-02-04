@@ -1,31 +1,30 @@
 use identity::{
-    iota::{ClientBuilder, DIDMessageEncoding, ExplorerUrl, Network, IotaDID},
-    prelude::*,
-    account::{Account, AccountStorage, IdentitySetup, Result}
+    iota::{ClientBuilder, DIDMessageEncoding, ExplorerUrl, Network, Client, ClientMap, Receipt, IotaDocument},
+    account::{Result},
+    crypto::{KeyPair,PrivateKey,PublicKey,KeyType},
+    core::Result as Res
 };
-use std::path::PathBuf;
 
+use crypto::signatures::ed25519;
 // https://github.com/iotaledger/identity.rs/blob/dev/examples/low-level-api/private_tangle.rs
 
-pub async fn create_n_dids(n: u16) -> Result<Vec<(Account, String)>> {
+
+pub type Key = [u8; 32];
+
+// returns a tuple of the Account and the Stronghold file name
+// in a practical setting, we would return the url and need to fetch it from the tangle
+pub async fn create_n_dids(n: u16) -> Result<Vec<(IotaDocument,(KeyPair,(Key,Key)),Receipt)>> {
     let mut did_array = Vec::new();
     for i in 0..n {
-        let stronghold_path = format!("./example-strong{}.hodl",i);
-        let stronghold_path_2 = format!("./example-strong{}.hodl",i);
-        let extracted_did = create_and_upload_did(stronghold_path).await?;
-        match extracted_did {
-            Some(v) => did_array.push((v,stronghold_path_2)),
-            None    => {
-                panic!(format!("The DID at index {} failed", i));
-            },
-        }
+        let did_info = create_and_upload_did().await?;
+        did_array.push(did_info);
     }
     return Ok(did_array);
 }
 
 // uploads the did for this user and returns the Account object
-async fn create_and_upload_did(stronghold_relative_path: String) -> Result<Option<Account>> {
-    let network_name = "dev";
+async fn create_and_upload_did() -> Result<(IotaDocument,(KeyPair,(Key,Key)),Receipt)> {
+     let network_name = "dev";
     let network = Network::try_from_name(network_name)?;
 
     // hardcoded as this fn will only ever be used on the private tangle
@@ -36,31 +35,69 @@ async fn create_and_upload_did(stronghold_relative_path: String) -> Result<Optio
         .network(network.clone())
         .encoding(encoding)
         .primary_node(private_node_url, None, None)?;
+    
+    let client = Client::from_builder(client_builder).await?;
+    let client_map = ClientMap::from_client(client);
 
-    // we try to build an account object using client
-    let stronghold_path: PathBuf = stronghold_relative_path.into();
-    let password: String = "my-password".into();
-    let stronghold = AccountStorage::Stronghold(stronghold_path, Some(password), None);
+    // Generate a new Ed25519 public/private key pair.
+    let (keypair, private_key) = gen_iota_keypair();
 
-    let account: Account = Account::builder()
-        .client_builder(client_builder)
-        .storage(stronghold)
-        .create_identity(IdentitySetup::default())
-        .await?;
+    // Create a DID Document (an identity) from the generated key pair.
+    let mut document: IotaDocument = IotaDocument::new(&keypair)?;
 
-    // Retrieve the did of the newly created identity.
-    let iota_did: &IotaDID = account.did();
+    // Sign the DID Document with the default signing method.
+    document.sign_self(keypair.private(), &document.default_signing_method()?.id())?;
 
-    // Print the local state of the DID Document
-    println!("[Example] Local Document from {} = {:#?}", iota_did, account.document());
+    println!("DID Document JSON > {:#}", document);
 
-    // Prints the Identity Resolver Explorer URL.
-    // The entire history can be observed on this page by clicking "Loading History".
+    // Publish the DID Document to the Tangle.
+    let receipt: Receipt = client_map.publish_document(&document).await?;
+
+    println!("Publish Receipt > {:#?}", receipt);
+
+    // Display the web explorer url that shows the published message.
     let explorer: &ExplorerUrl = ExplorerUrl::mainnet();
     println!(
-    "[Example] Explore the DID Document = {}",
-    explorer.resolver_url(iota_did)?
+        "DID Document Transaction > {}",
+        explorer.message_url(receipt.message_id())?
     );
+    println!("Explore the DID Document > {}", explorer.resolver_url(document.id())?);
 
-    return Ok(Some(account));
+    Ok((document, (keypair, private_key), receipt))
+}
+
+// returns a keypair and the associated private key
+pub fn gen_iota_keypair() -> (KeyPair,(Key,Key)) {
+    let sec_res = generate_ed25519_keypair();
+    if let Ok((pubk,sec)) = sec_res {
+        let kp_res = KeyPair::try_from_ed25519_bytes(&sec);
+        if let Ok(kp) = kp_res {
+            return (kp, (pubk,sec));
+        }
+        else {
+            panic!("Failed to generate keypair");
+        }
+    }
+    else {
+        panic!("Failed to generate keypair");
+    }
+}
+
+/// Generates a new pair of public/private Ed25519 keys.
+///
+/// Note that the private key is a 32-byte seed in compliance with [RFC 8032](https://datatracker.ietf.org/doc/html/rfc8032#section-3.2).
+/// Other implementations often use another format. See [this blog post](https://blog.mozilla.org/warner/2011/11/29/ed25519-keys/) for further explanation.
+pub fn generate_ed25519_keypair() -> Res<((Key,Key))> {
+    let secret_res = ed25519::SecretKey::generate();
+    if let Ok(secret) = secret_res {
+        let public: ed25519::PublicKey = secret.public_key();
+
+        let private = secret.to_bytes();
+        let public = public.to_bytes();
+    
+        Ok((public, private))
+    }
+    else {
+        panic!("Failed to generate keypair");
+    }
 }

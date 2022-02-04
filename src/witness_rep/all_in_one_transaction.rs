@@ -4,8 +4,17 @@ use iota_streams::{
         Address, Author, Bytes, ChannelType, MessageContent, Subscriber,
         UnwrappedMessage, PublicKey
     },
-    core::{println, Result}
+    core::{println, Result},
 };
+
+use identity::crypto::PublicKey as IdPub;
+use identity::crypto::PrivateKey;
+use identity::{
+    iota::IotaDocument,
+    did::MethodData,
+    crypto::{KeyPair, Ed25519, Sign}
+};
+
 
 use std::path::PathBuf;
 //use identity::crypto::PublicKey;
@@ -15,6 +24,8 @@ use crate::witness_rep::messages::{
     setup_msgs, transaction_msgs, signatures
 };
 use crate::witness_rep::iota_did::create_and_upload_did::create_n_dids;
+use crate::witness_rep::iota_did::create_and_upload_did::Key;
+use crate::witness_rep::iota_did::get_pubkey_from_document::get_pubkey_from_document;
 use rand::Rng;
 use iota_streams::app::message::HasLink;
 
@@ -84,27 +95,24 @@ pub async fn transact(node_url: &str) -> Result<()> {
     );
 
     // tn_a processes the channel announcement
-    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes());
-    if let Ok(addr) = ann_address {
-        tn_a.receive_announcement(&addr).await?;
+    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes())?;
+    tn_a.receive_announcement(&ann_address).await?;
 
-        // tn_a sends subscription message; these are the subscription links that
-        // should be provided to the Author to complete subscription
-        let subscribe_msg_tn_a = tn_a.send_subscribe(&addr).await?;
-        let sub_msg_tn_a_str = subscribe_msg_tn_a.to_string();
-        println!(
-            "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
-            sub_msg_tn_a_str, subscribe_msg_tn_a.to_msg_index()
-        );
+    // tn_a sends subscription message; these are the subscription links that
+    // should be provided to the Author to complete subscription
+    let subscribe_msg_tn_a = tn_a.send_subscribe(&ann_address).await?;
+    let sub_msg_tn_a_str = subscribe_msg_tn_a.to_string();
+    println!(
+        "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
+        sub_msg_tn_a_str, subscribe_msg_tn_a.to_msg_index()
+    );
 
-        // author processes the subscription message
-        let sub_a_address = Address::try_from_bytes(&subscribe_msg_tn_a.to_bytes());
-        if let Ok(addr_on) = sub_a_address {
-            on_a.receive_subscribe(&addr_on).await?;
-        }
-    }
+    // author processes the subscription message
+    let sub_a_address = Address::try_from_bytes(&subscribe_msg_tn_a.to_bytes())?;
+    on_a.receive_subscribe(&sub_a_address).await?;
     
-    //////  **non-current stages are skipped/assumed** 
+    ////// 
+    ////    **non-current stages are skipped/assumed** 
     ////    STAGE 1 - TN_A CHECKS TO SEE IF THERE ARE AVAILABLE WITNESSES (WITHOUT COMMITING TO ANYTHING)
     ////    STAGE 2 (CURRENT) - TN_A REQUESTS TO TRANSACT WITH TN_B, TN_B ACCEPTS
     //////
@@ -112,31 +120,56 @@ pub async fn transact(node_url: &str) -> Result<()> {
     // gives us an array of (keypair,doc) variables for the particiants.
     // these are keypairs that sign the messages, not the author/sub keypair
     // [0]=TN_A    [1]=TN_B    [2]=WN_A    [3]=WN_B
-/*     let account_stronghold = create_n_dids(4).await?;
+    let did_details = create_n_dids(4).await?;
     
-    let participants = account_stronghold.iter()
-                        .map(|(_,strhld)| {
-                            let stronghold_path: PathBuf = strhld.into();
-                            let password : String = "my-password".into();
-                            let acc = AccountStorage::Stronghold(stronghold_path, Some(password), None);
+    let mut did_pubkeys : Vec<String> = did_details
+                                            .iter()
+                                            .map(|(_, (kp,_), _)| {
+                                                let multibase_pub = MethodData::new_multibase(kp.public());
 
-                        })
-                        .collect::<Vec<PublicKey>>();
+                                                if let MethodData::PublicKeyMultibase(mbpub) = multibase_pub {
+                                                    return mbpub;
+                                                }
+                                                else {
+                                                    return String::default();
+                                                }
+                                            })
+                                            .collect();
+
+    let mut did_privkeys : Vec<&Key> = did_details
+                                            .iter()
+                                            .map(|(_, (_,(privk,_)), _)| privk)
+                                            .collect();
+    
+    let mut did_docs : Vec<&IotaDocument> = did_details
+                                            .iter()
+                                            .map(|(doc, _, _)| doc)
+                                            .collect();
+
+    let mut did_kps : Vec<&KeyPair> = did_details
+                                            .iter()
+                                            .map(|(_, (kp,_), _)| kp)
+                                            .collect();
+    
+    // this gives us our private key, allowing us to sign data manually
+    println!("{}", String::from_utf8_lossy(did_privkeys[0]));
 
     let contract_by_tn_a = transaction_msgs::Contract {
         contract_definition: String::from("tn_b allows tn_a to enter in front of it in the lane tn_b is in"),               
-        participants: transaction_msgs::TransactingClients(participants),      
+        participants: transaction_msgs::TransactingClients(
+            Vec::from([did_pubkeys[0].clone(), did_pubkeys[1].clone()])
+        ),      
         time: 1643572739,
         location: ((53, 20, 27.036),(6, 15, 2.695)),
     };
 
     // TN_A sends this, and TN_B replies with yes/no answer, or a timeout
     let setup_msg_by_tn_a = setup_msgs::SetupMessage {
-        contract: contract_by_tn_a,
+        contract: contract_by_tn_a.clone(),
         max_witnesses: 5,
         payment_to_node: 0.1,
         max_payment_per_witness: 0.01,
-    }; */
+    };
 
 
     //////
@@ -146,35 +179,92 @@ pub async fn transact(node_url: &str) -> Result<()> {
     ////    STAGE 5 (CURRENT) - WITNESSES SEND IN THEIR SIGNATURES
     /////
     
- /*    let wn_a_pre_sig = signatures::WitnessPreSig {
-        contract: contract_by_tn_a,
+    // WN_A signs their response
+    let wn_a_pre_sig = signatures::WitnessPreSig {
+        contract: contract_by_tn_a.clone(),
         timeout: DEFAULT_TIMEOUT,
     };
+    let wn_a_pre_sig_bytes = serde_json::to_string(&wn_a_pre_sig)?;
+    let wn_a_sig_bytes: [u8; 64]  = Ed25519::sign(&String::into_bytes(wn_a_pre_sig_bytes), did_kps[2].private())?;
 
-    let wn_a_pre_sig = signatures::WitnessSig {
-        contract: contract_by_tn_a,
+    let wn_a_sig = signatures::WitnessSig {
+        contract: contract_by_tn_a.clone(),
         timeout: DEFAULT_TIMEOUT,
-        signature: ,
+        signature: wn_a_sig_bytes.to_vec(),
     };
-     */
+    let wn_a_wrapped_sig_bytes = serde_json::to_string(&wn_a_sig)?;
+    let wn_a_wrapped_sig_bytes = wn_a_wrapped_sig_bytes.as_bytes();
+
+    // WN_B signs their response
+    let wn_b_pre_sig = signatures::WitnessPreSig {
+        contract: contract_by_tn_a.clone(),
+        timeout: DEFAULT_TIMEOUT,
+    };
+    let wn_b_pre_sig_bytes = serde_json::to_string(&wn_b_pre_sig)?;
+    let wn_b_sig_bytes: [u8; 64]  = Ed25519::sign(&String::into_bytes(wn_b_pre_sig_bytes), did_kps[3].private())?;
+
+    let wn_b_sig = signatures::WitnessSig {
+        contract: contract_by_tn_a.clone(),
+        timeout: DEFAULT_TIMEOUT,
+        signature: wn_b_sig_bytes.to_vec(),
+    };
+    let wn_b_wrapped_sig_bytes = serde_json::to_string(&wn_b_sig)?;
+    let wn_b_wrapped_sig_bytes = wn_b_wrapped_sig_bytes.as_bytes();
+
+    
     //////
     ////    STAGE 6 (CURRENT) - TN_B SIGNS THE WITNESSES+CONTRACT, SENDS THIS TO TN_A. TN_A ALSO SIGNS HIS VERSION. 
     //////
 
-/*     // num_tn..num_wn is a dynamic way of filtering out the witnesses
-    let witness_pub_keys = account_stronghold.iter()
-                            .enumerate()
-                            .filter(|&(i,_)| (num_tn..num_wn).contains(&i))
-                            .map(|(_,(kp,_))| kp.public())
-                            .collect::<Vec<PublicKey>>()
-                            .map(|x| TransactingClients(x));
+    // TN_A signs the transaction
+    let tn_a_tx_msg_pre_sig = transaction_msgs::TransactionMsgPreSig {
+        contract: contract_by_tn_a.clone(),
+        witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
+        wit_node_sigs: transaction_msgs::ArrayOfSignitures(
+            [
+                transaction_msgs::Signature(wn_a_wrapped_sig_bytes.to_vec()),
+                transaction_msgs::Signature(wn_b_wrapped_sig_bytes.to_vec())
+            ]
+            .to_vec()
+        ),
+    };
+    let tn_a_tx_msg_pre_sig_bytes = serde_json::to_string(&tn_a_tx_msg_pre_sig)?;
+    let tn_a_tx_msg_sig: [u8; 64]  = Ed25519::sign(&String::into_bytes(tn_a_tx_msg_pre_sig_bytes), did_kps[0].private())?;
 
+    // TN_B signs the transaction
+    let tn_b_tx_msg_pre_sig = transaction_msgs::TransactionMsgPreSig {
+        contract: contract_by_tn_a.clone(),
+        witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
+        wit_node_sigs: transaction_msgs::ArrayOfSignitures(
+            [
+                transaction_msgs::Signature(wn_a_sig_bytes.to_vec()),
+                transaction_msgs::Signature(wn_b_sig_bytes.to_vec())
+            ]
+            .to_vec()
+        ),
+    };
+    let tn_b_tx_msg_pre_sig_bytes = serde_json::to_string(&tn_b_tx_msg_pre_sig)?;
+    let tn_b_tx_msg_sig: [u8; 64]  = Ed25519::sign(&String::into_bytes(tn_b_tx_msg_pre_sig_bytes), did_kps[1].private())?;
+    
+    // TN_A, having received these signatures, builds the final transaction
     let transaction_msg = transaction_msgs::TransactionMsg {
-        contract: Contract,
-        witnesses: WitnessClients,
-        wit_node_sigs: ArrayOfSignitures,
-        tx_client_sigs: ArrayOfSignitures,
-    } */
+        contract: contract_by_tn_a.clone(),
+        witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
+        wit_node_sigs: transaction_msgs::ArrayOfSignitures(
+            [
+                transaction_msgs::Signature(wn_a_sig_bytes.to_vec()),
+                transaction_msgs::Signature(wn_b_sig_bytes.to_vec())
+            ]
+            .to_vec()
+        ),
+        tx_client_sigs: transaction_msgs::ArrayOfSignitures(
+            [
+                transaction_msgs::Signature(tn_a_tx_msg_sig.to_vec()),
+                transaction_msgs::Signature(tn_b_tx_msg_sig.to_vec())
+            ]
+            .to_vec()
+        ),
+    };
 
     //////
     ////    STAGE 7 (CURRENT) - TN_A SENDS THE TRANSACTION TO ON_A FOR APPROVAL, ON_A APPROVES
@@ -187,43 +277,40 @@ pub async fn transact(node_url: &str) -> Result<()> {
     //////
     
     // witnesses process the channel announcement
-    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes());
-    if let Ok(addr) = ann_address {
-        wn_a.receive_announcement(&addr).await?;
-        wn_b.receive_announcement(&addr).await?;
-        tn_b.receive_announcement(&addr).await?;
+    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes())?;
+    wn_a.receive_announcement(&ann_address).await?;
+    wn_b.receive_announcement(&ann_address).await?;
+    tn_b.receive_announcement(&ann_address).await?;
 
-        // witnesses send subscription messages
-        let subscribe_msg_wn_a = wn_a.send_subscribe(&addr).await?;
-        let subscribe_msg_wn_b = wn_b.send_subscribe(&addr).await?;
-        let subscribe_msg_tn_b = tn_b.send_subscribe(&addr).await?;
-        let sub_msg_wn_a_str = subscribe_msg_wn_a.to_string();
-        let sub_msg_wn_b_str = subscribe_msg_wn_b.to_string();
-        let sub_msg_tn_b_str = subscribe_msg_tn_b.to_string();
-        println!(
-            "Subscription msgs:\n\tSubscriber WN_A: {}\n\tTangle Index: {:#}\n",
-            sub_msg_wn_a_str, subscribe_msg_wn_a.to_msg_index()
-        );
-        println!(
-            "Subscription msgs:\n\tSubscriber WN_B: {}\n\tTangle Index: {:#}\n",
-            sub_msg_wn_b_str, subscribe_msg_wn_b.to_msg_index()
-        );
-        println!(
-            "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
-            sub_msg_tn_b_str, subscribe_msg_tn_b.to_msg_index()
-        );
+    // witnesses send subscription messages
+    let subscribe_msg_wn_a = wn_a.send_subscribe(&ann_address).await?;
+    let subscribe_msg_wn_b = wn_b.send_subscribe(&ann_address).await?;
+    let subscribe_msg_tn_b = tn_b.send_subscribe(&ann_address).await?;
+    let sub_msg_wn_a_str = subscribe_msg_wn_a.to_string();
+    let sub_msg_wn_b_str = subscribe_msg_wn_b.to_string();
+    let sub_msg_tn_b_str = subscribe_msg_tn_b.to_string();
+    println!(
+        "Subscription msgs:\n\tSubscriber WN_A: {}\n\tTangle Index: {:#}\n",
+        sub_msg_wn_a_str, subscribe_msg_wn_a.to_msg_index()
+    );
+    println!(
+        "Subscription msgs:\n\tSubscriber WN_B: {}\n\tTangle Index: {:#}\n",
+        sub_msg_wn_b_str, subscribe_msg_wn_b.to_msg_index()
+    );
+    println!(
+        "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
+        sub_msg_tn_b_str, subscribe_msg_tn_b.to_msg_index()
+    );
 
-        // Note that: sub_a = tn_a, sub_b = wn_a, sub_c = wn_b, sub_d = tn_b
-        let sub_b_address = Address::try_from_bytes(&subscribe_msg_wn_a.to_bytes());
-        let sub_c_address = Address::try_from_bytes(&subscribe_msg_wn_b.to_bytes());
-        let sub_d_address = Address::try_from_bytes(&subscribe_msg_tn_b.to_bytes());
+    // Note that: sub_a = tn_a, sub_b = wn_a, sub_c = wn_b, sub_d = tn_b
+    let sub_b_address = Address::try_from_bytes(&subscribe_msg_wn_a.to_bytes())?;
+    let sub_c_address = Address::try_from_bytes(&subscribe_msg_wn_b.to_bytes())?;
+    let sub_d_address = Address::try_from_bytes(&subscribe_msg_tn_b.to_bytes())?;
 
-        if let Ok(addr_on) = ann_address {
-            on_a.receive_subscribe(&addr_on).await?;
-            on_a.receive_subscribe(&addr_on).await?;
-            on_a.receive_subscribe(&addr_on).await?;
-        }
-    }
+    on_a.receive_subscribe(&sub_b_address).await?;
+    on_a.receive_subscribe(&sub_c_address).await?;
+    on_a.receive_subscribe(&sub_d_address).await?;
+
 
     //////
     ////    STAGE 9  - GET THE PUBKEYS OF THE WITNESSES FROM THEM THROUGH TN_A

@@ -1154,6 +1154,7 @@ source = "git+https://github.com/iotaledger/crypto.rs?branch=dev#752321d556ab7f3
 dependencies = [
  "blake2",
  "digest",
+ "ed25519-zebra",
  "getrandom 0.2.4",
 ]
 
@@ -1948,6 +1949,8 @@ dependencies = [
  "iota-crypto 0.9.1 (git+https://github.com/iotaledger/crypto.rs?branch=dev)",
  "iota-streams",
  "rand 0.7.3",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 
