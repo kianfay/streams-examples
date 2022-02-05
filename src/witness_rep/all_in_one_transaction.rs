@@ -21,7 +21,7 @@ use std::path::PathBuf;
 use identity::account::AccountStorage;
 use crate::examples::{verify_messages, ALPH9};
 use crate::witness_rep::messages::{ 
-    setup_msgs, transaction_msgs, signatures
+    setup_msgs, transaction_msgs, signatures, witness_msgs
 };
 use crate::witness_rep::iota_did::create_and_upload_did::create_n_dids;
 use crate::witness_rep::iota_did::create_and_upload_did::Key;
@@ -270,7 +270,9 @@ pub async fn transact(node_url: &str) -> Result<()> {
     ////    STAGE 7 (CURRENT) - TN_A SENDS THE TRANSACTION TO ON_A FOR APPROVAL, ON_A APPROVES
     //////
     
-
+    // a bool that gets checked below when the author is about to form the branch
+    let on_a_auth : Result<bool, ()> = Err(());
+    //let on_a_auth : Result<bool, ()> = Ok(true);
 
     //////
     ////    STAGE 8 (CURRENT) - WITNESSES AND TN_B SUBSCRIBE TO CHANNEL, AUTHOR ACCEPTS
@@ -318,6 +320,11 @@ pub async fn transact(node_url: &str) -> Result<()> {
     ////    STAGE 10 (CURRENT) - ON_A SENDS A KEYLOAD FOR THIS TRANSACTION (INCLUDING TN_A AND WITNESSES)
     //////  
 
+    // ON_A only uploads the keyload if they have already authorised the transaction
+    if let Err(()) = on_a_auth {
+        panic!("ON_A did not authorise the branch");
+    }
+    
     // fetch subscriber public keys (for use by author in issuing a keyload);
     // we'll also use this to sort messages on the retrieval end
     let tn_a_pk = tn_a.get_public_key().as_bytes();
@@ -346,15 +353,14 @@ pub async fn transact(node_url: &str) -> Result<()> {
     ////    STAGE 11 (CURRENT) - TN_A SENDS THE TRANSACTION ON ON_A'S CHANNEL
     //////
     
+    // serialise the tx
+    let tx_msg_str = serde_json::to_string(&transaction_msg)?; 
     let tx_message = vec![
-        "{
-            \'tn_a_sw\': \'TN_A's signed witnesses\',
-            \'tn_b_sw\': \'TN_B's signed witnesses\',
-        }"
+        tx_msg_str
     ];
 
-    let mut prev_msg_link = keyload_a_link;
     // TN_A sends the transaction
+    let mut prev_msg_link = keyload_a_link;
     tn_a.sync_state().await;
     let (msg_link, _) = tn_a.send_signed_packet(
         &prev_msg_link,
@@ -372,17 +378,24 @@ pub async fn transact(node_url: &str) -> Result<()> {
     ////    STAGE 14 (CURRENT) - WITNESSES UPLOAD THEIR WITNESS STATEMENTS
     //////
 
+    // WN_A's prepares their statement
+    let wn_a_statement = witness_msgs::WitnessStatement {
+        outcome: true
+    };
+    let wn_a_statement_string = serde_json::to_string(&wn_a_statement)?;
+
     let witness_a_message = vec![
-        "{
-            output: true,
-            ...
-        }"
+        wn_a_statement_string
     ];
+
+    // WN_B's prepares their statement
+    let wn_b_statement = witness_msgs::WitnessStatement {
+        outcome: true
+    };
+    let wn_b_statement_string = serde_json::to_string(&wn_b_statement)?;
+
     let witness_b_message = vec![
-        "{
-            output: true,
-            ...
-        }"
+        wn_b_statement_string
     ];
 
     // WN_A sends their witness statement
@@ -396,9 +409,7 @@ pub async fn transact(node_url: &str) -> Result<()> {
     prev_msg_link = msg_link;
 
     // WN_B sends their witness statement
-    println!("here");
     wn_b.sync_state().await;
-    println!("here2");
     let (msg_link, _) = wn_b.send_signed_packet(
         &prev_msg_link,
         &Bytes::default(),
