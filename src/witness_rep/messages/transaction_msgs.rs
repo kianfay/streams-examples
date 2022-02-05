@@ -1,3 +1,6 @@
+use crate::witness_rep::messages::signatures::{WitnessSig, TransactingSig};
+
+
 use serde::{Deserialize, Serialize};
 
 //////
@@ -5,18 +8,11 @@ use serde::{Deserialize, Serialize};
 //////
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct TransactionMsgPreSig {
-    pub contract: Contract,
-	pub witnesses: WitnessClients,
-    pub wit_node_sigs: ArrayOfSignitures,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
 pub struct TransactionMsg {
     pub contract: Contract,
 	pub witnesses: WitnessClients,
-    pub wit_node_sigs: ArrayOfSignitures,
-	pub tx_client_sigs: ArrayOfSignitures,
+    pub wit_node_sigs: ArrayOfWnSignitures,
+	pub tx_client_sigs: ArrayOfTxSignitures,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -44,9 +40,9 @@ pub type Ordinate = (u16,u16,f32);
 
 // signitures are also simply arrays of bytes
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Signature(pub Vec<u8>);
+pub struct ArrayOfTxSignitures(pub Vec<TransactingSig>);
 #[derive(Serialize, Deserialize, Clone)]
-pub struct ArrayOfSignitures(pub Vec<Signature>);
+pub struct ArrayOfWnSignitures(pub Vec<WitnessSig>);
 
 //////
 ////	UTILITY FUNCTIONS

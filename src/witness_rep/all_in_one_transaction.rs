@@ -54,9 +54,9 @@ pub async fn transact(node_url: &str) -> Result<()> {
     // CONSTANTS
     let DEFAULT_TIMEOUT : u32 = 60*2; // 2 mins
 
-    //////
+    //////-----------------------------------------------------------------------------
     ////    PREREQUISITES 1 (CURRENT) - HAVE A NETWORK OF CLIENTS CONNECTED TO NODES
-    //////
+    //////-----------------------------------------------------------------------------
 
     // cloned for each node; only for testing purposes where all participants are using the same node
     let client = Client::new_from_url(node_url);
@@ -69,11 +69,11 @@ pub async fn transact(node_url: &str) -> Result<()> {
     let mut wn_a = Subscriber::new("Witness Node A", client.clone());
     let mut wn_b = Subscriber::new("Witness Node B", client.clone());
 
-    //////
+    //////-----------------------------------------------------------------------------
     ////    PREREQUISITES 2 (CURRENT) - ON_A ALREADY HAS A CHANNEL SET UP TO BE USED BY CLIENTS FOR THIS PURPOSE
     ////                                (CLIENTS MEANING THE ORGANIZATION'S CLIENTS, AS OPOSSED TO TANGLE CLIENT)
     ////    PREREQUISITES 3 (CURRENT) - TN_A, ON_A'S CLIENT, IS ALREADY A SUBSCRIBER OF ON_A'S CHANNEL
-    //////
+    //////-----------------------------------------------------------------------------
     
     // on_a generates a unique seed for the author
     let seed: &str = &(0..81)
@@ -111,11 +111,11 @@ pub async fn transact(node_url: &str) -> Result<()> {
     let sub_a_address = Address::try_from_bytes(&subscribe_msg_tn_a.to_bytes())?;
     on_a.receive_subscribe(&sub_a_address).await?;
     
-    ////// 
+    //////----------------------------------------------------------------------------- 
     ////    **non-current stages are skipped/assumed** 
     ////    STAGE 1 - TN_A CHECKS TO SEE IF THERE ARE AVAILABLE WITNESSES (WITHOUT COMMITING TO ANYTHING)
     ////    STAGE 2 (CURRENT) - TN_A REQUESTS TO TRANSACT WITH TN_B, TN_B ACCEPTS
-    //////
+    //////-----------------------------------------------------------------------------
 
     // gives us an array of (keypair,doc) variables for the particiants.
     // these are keypairs that sign the messages, not the author/sub keypair
@@ -172,13 +172,14 @@ pub async fn transact(node_url: &str) -> Result<()> {
     };
 
 
-    //////
+    //////-----------------------------------------------------------------------------
     ////    STAGE 3 - TN_A AND TN_B FIND WITNESSES TO COMMIT TO THIS TRANSACTION
     ////    STAGE 4 - TN_A AND TN_B EXCHANGE WITNESSES 
     ////              (INCLUDES AGREEING UPON AND EJECTING EXCESS WITNESSES)
     ////    STAGE 5 (CURRENT) - WITNESSES SEND IN THEIR SIGNATURES
-    /////
+    ////////////-----------------------------------------------------------------------------
     
+
     // WN_A signs their response
     let wn_a_pre_sig = signatures::WitnessPreSig {
         contract: contract_by_tn_a.clone(),
@@ -190,10 +191,9 @@ pub async fn transact(node_url: &str) -> Result<()> {
     let wn_a_sig = signatures::WitnessSig {
         contract: contract_by_tn_a.clone(),
         timeout: DEFAULT_TIMEOUT,
+        signer_pubkey: did_pubkeys[2].clone(),
         signature: wn_a_sig_bytes.to_vec(),
     };
-    let wn_a_wrapped_sig_bytes = serde_json::to_string(&wn_a_sig)?;
-    let wn_a_wrapped_sig_bytes = wn_a_wrapped_sig_bytes.as_bytes();
 
     // WN_B signs their response
     let wn_b_pre_sig = signatures::WitnessPreSig {
@@ -206,80 +206,112 @@ pub async fn transact(node_url: &str) -> Result<()> {
     let wn_b_sig = signatures::WitnessSig {
         contract: contract_by_tn_a.clone(),
         timeout: DEFAULT_TIMEOUT,
+        signer_pubkey: did_pubkeys[3].clone(),
         signature: wn_b_sig_bytes.to_vec(),
     };
-    let wn_b_wrapped_sig_bytes = serde_json::to_string(&wn_b_sig)?;
-    let wn_b_wrapped_sig_bytes = wn_b_wrapped_sig_bytes.as_bytes();
 
     
-    //////
+    //////-----------------------------------------------------------------------------
     ////    STAGE 6 (CURRENT) - TN_B SIGNS THE WITNESSES+CONTRACT, SENDS THIS TO TN_A. TN_A ALSO SIGNS HIS VERSION. 
-    //////
+    //////-----------------------------------------------------------------------------
 
     // TN_A signs the transaction
-    let tn_a_tx_msg_pre_sig = transaction_msgs::TransactionMsgPreSig {
+    let tn_a_tx_msg_pre_sig = signatures::TransactingPreSig {
         contract: contract_by_tn_a.clone(),
         witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
-        wit_node_sigs: transaction_msgs::ArrayOfSignitures(
+        wit_node_sigs: transaction_msgs::ArrayOfWnSignitures(
             [
-                transaction_msgs::Signature(wn_a_wrapped_sig_bytes.to_vec()),
-                transaction_msgs::Signature(wn_b_wrapped_sig_bytes.to_vec())
+                wn_a_sig.clone(),
+                wn_b_sig.clone()
             ]
             .to_vec()
         ),
+        timeout: DEFAULT_TIMEOUT
     };
     let tn_a_tx_msg_pre_sig_bytes = serde_json::to_string(&tn_a_tx_msg_pre_sig)?;
     let tn_a_tx_msg_sig: [u8; 64]  = Ed25519::sign(&String::into_bytes(tn_a_tx_msg_pre_sig_bytes), did_kps[0].private())?;
 
-    // TN_B signs the transaction
-    let tn_b_tx_msg_pre_sig = transaction_msgs::TransactionMsgPreSig {
+    let tn_a_tx_msg_pre_sig = signatures::TransactingSig {
         contract: contract_by_tn_a.clone(),
         witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
-        wit_node_sigs: transaction_msgs::ArrayOfSignitures(
+        wit_node_sigs: transaction_msgs::ArrayOfWnSignitures(
             [
-                transaction_msgs::Signature(wn_a_sig_bytes.to_vec()),
-                transaction_msgs::Signature(wn_b_sig_bytes.to_vec())
+                wn_a_sig.clone(),
+                wn_b_sig.clone()
             ]
             .to_vec()
         ),
+        timeout: DEFAULT_TIMEOUT,
+        signer_pubkey: did_pubkeys[0].clone(),
+        signature: tn_a_tx_msg_sig.to_vec()
+    };
+
+    // TN_B signs the transaction
+    let tn_b_tx_msg_pre_sig = signatures::TransactingPreSig {
+        contract: contract_by_tn_a.clone(),
+        witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
+        wit_node_sigs: transaction_msgs::ArrayOfWnSignitures(
+            [
+                wn_a_sig.clone(),
+                wn_b_sig.clone()
+            ]
+            .to_vec()
+        ),
+        timeout: DEFAULT_TIMEOUT
     };
     let tn_b_tx_msg_pre_sig_bytes = serde_json::to_string(&tn_b_tx_msg_pre_sig)?;
     let tn_b_tx_msg_sig: [u8; 64]  = Ed25519::sign(&String::into_bytes(tn_b_tx_msg_pre_sig_bytes), did_kps[1].private())?;
-    
+
+    let tn_b_tx_msg_pre_sig = signatures::TransactingSig {
+        contract: contract_by_tn_a.clone(),
+        witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
+        wit_node_sigs: transaction_msgs::ArrayOfWnSignitures(
+            [
+                wn_a_sig.clone(),
+                wn_b_sig.clone()
+            ]
+            .to_vec()
+        ),
+        timeout: DEFAULT_TIMEOUT,
+        signer_pubkey: did_pubkeys[1].clone(),
+        signature: tn_b_tx_msg_sig.to_vec()
+    };
+
     // TN_A, having received these signatures, builds the final transaction
     let transaction_msg = transaction_msgs::TransactionMsg {
         contract: contract_by_tn_a.clone(),
         witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
-        wit_node_sigs: transaction_msgs::ArrayOfSignitures(
+        wit_node_sigs: transaction_msgs::ArrayOfWnSignitures(
             [
-                transaction_msgs::Signature(wn_a_sig_bytes.to_vec()),
-                transaction_msgs::Signature(wn_b_sig_bytes.to_vec())
+                wn_a_sig.clone(),
+                wn_b_sig.clone()
             ]
             .to_vec()
         ),
-        tx_client_sigs: transaction_msgs::ArrayOfSignitures(
+        tx_client_sigs: transaction_msgs::ArrayOfTxSignitures(
             [
-                transaction_msgs::Signature(tn_a_tx_msg_sig.to_vec()),
-                transaction_msgs::Signature(tn_b_tx_msg_sig.to_vec())
+                tn_a_tx_msg_pre_sig,
+                tn_b_tx_msg_pre_sig
             ]
             .to_vec()
         ),
     };
 
-    //////
+    //////-----------------------------------------------------------------------------
     ////    STAGE 7 (CURRENT) - TN_A SENDS THE TRANSACTION TO ON_A FOR APPROVAL, ON_A APPROVES
-    //////
+    //////-----------------------------------------------------------------------------
     
     // a bool that gets checked below when the author is about to form the branch
     //let on_a_auth : Result<bool, ()> = Err(());
     let on_a_auth : Result<bool, ()> = Ok(true);
 
-    //////
+    //////-----------------------------------------------------------------------------
     ////    STAGE 8 (CURRENT) - WITNESSES AND TN_B SUBSCRIBE TO CHANNEL, AUTHOR ACCEPTS
-    //////
+    //////-----------------------------------------------------------------------------
     
     // witnesses process the channel announcement
-    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes())?;
+    //// ideally we would have another address object (for realism), however this causes an error
+    ////let ann_address = Address::try_from_bytes(&announcement_link.to_bytes())?;
     wn_a.receive_announcement(&ann_address).await?;
     wn_b.receive_announcement(&ann_address).await?;
     tn_b.receive_announcement(&ann_address).await?;
@@ -314,11 +346,11 @@ pub async fn transact(node_url: &str) -> Result<()> {
     on_a.receive_subscribe(&sub_d_address).await?;
 
 
-    //////
+    //////-----------------------------------------------------------------------------
     ////    STAGE 9  - GET THE PUBKEYS OF THE WITNESSES FROM THEM THROUGH TN_A
     ////              (BECAUSE THE PUBKEYS OF AUTHOR/SUB OBJECTS ARE DIFFERENT TO NODE PUBKEYS)
     ////    STAGE 10 (CURRENT) - ON_A SENDS A KEYLOAD FOR THIS TRANSACTION (INCLUDING TN_A AND WITNESSES)
-    //////  
+    //////-----------------------------------------------------------------------------  
 
     // ON_A only uploads the keyload if they have already authorised the transaction
     if let Err(()) = on_a_auth {
@@ -349,9 +381,9 @@ pub async fn transact(node_url: &str) -> Result<()> {
         _seq_a_link.unwrap()
     );
 
-    //////
+    //////-----------------------------------------------------------------------------
     ////    STAGE 11 (CURRENT) - TN_A SENDS THE TRANSACTION ON ON_A'S CHANNEL
-    //////
+    //////-----------------------------------------------------------------------------
     
     // serialise the tx
     let tx_msg_str = serde_json::to_string(&transaction_msg)?; 
@@ -371,12 +403,12 @@ pub async fn transact(node_url: &str) -> Result<()> {
     prev_msg_link = msg_link;
 
 
-    //////
+    //////-----------------------------------------------------------------------------
     ////    STAGE 12 - WITNESSES SEE THE TRANSACTION IS UPLOADED
     ////    STAGE 13 - WITNESSES DECIDE THE PERCEIVED OUTCOME OF THE TRANSACTION AND UPDLOAD ACCORDINGLY
     ////               (DECISION BASED ON CUSTOMIZABLE FACTORS I.E. SENSORS, REPUTATION, ...)
     ////    STAGE 14 (CURRENT) - WITNESSES UPLOAD THEIR WITNESS STATEMENTS
-    //////
+    //////-----------------------------------------------------------------------------
 
     // WN_A's prepares their statement
     let wn_a_statement = witness_msgs::WitnessStatement {
@@ -418,9 +450,9 @@ pub async fn transact(node_url: &str) -> Result<()> {
     println!("Sent msg from WN_B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     prev_msg_link = msg_link;
 
-    //////
+    //////-----------------------------------------------------------------------------
     ////    STAGE 15 (CURRENT) - ALL PARTIES, BOTH INVOLVED AND NOT INVOLVED, CAN NOW SCAN THE TRANSACTION
-    //////
+    //////-----------------------------------------------------------------------------
 
     // -----------------------------------------------------------------------------
     // Author can now fetch these messages
@@ -431,9 +463,9 @@ pub async fn transact(node_url: &str) -> Result<()> {
     println!("\nVerifying message retrieval: Author");
     verify_messages(&tx_message, retrieved_lists.remove(0))?;
 
-    //////
+    //////-----------------------------------------------------------------------------
     ////    STAGE 16 (CURRENT) - RELEVANT NODES COMPENSATE THE PREDEFINED NODES TO BE COMPENSATED
-    //////
+    //////-----------------------------------------------------------------------------
 
     let compensation_tx_tn_a = vec![
         "{
@@ -470,9 +502,9 @@ pub async fn transact(node_url: &str) -> Result<()> {
     println!("Sent msg from TN_B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     //prev_msg_link = msg_link;
 
-    //////
+    //////-----------------------------------------------------------------------------
     ////    ------FINISHED------
-    //////
+    //////-----------------------------------------------------------------------------
 
     Ok(())
 }
