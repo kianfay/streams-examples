@@ -86,7 +86,7 @@ pub async fn transact(node_url: &str) -> Result<()> {
         .collect::<String>();
     
     // on_a creates the channel
-    let mut on_a = Author::new(seed, ChannelType::MultiBranch, client.clone());
+    let mut on_a = Author::new(seed, ChannelType::MultiBranch, client);
     let announcement_link = on_a.send_announce().await?;
     let ann_link_string = announcement_link.to_string();
     println!(
@@ -271,8 +271,8 @@ pub async fn transact(node_url: &str) -> Result<()> {
     //////
     
     // a bool that gets checked below when the author is about to form the branch
-    let on_a_auth : Result<bool, ()> = Err(());
-    //let on_a_auth : Result<bool, ()> = Ok(true);
+    //let on_a_auth : Result<bool, ()> = Err(());
+    let on_a_auth : Result<bool, ()> = Ok(true);
 
     //////
     ////    STAGE 8 (CURRENT) - WITNESSES AND TN_B SUBSCRIBE TO CHANNEL, AUTHOR ACCEPTS
