@@ -38,18 +38,18 @@ async fn main() -> Result<()> {
     println!("\nPrivate - Multi Branch - Single Publisher per Branch\n");
     examples::single_pub_per_branch::example(url).await?; */
 
-/*     println!("\n---------------------------------------");
-    println!("\nPrivate - Multi Branch - Multiple Publishers per Branch\n");
-    examples::multi_pub_per_branch::example(url).await?; */
-
     println!("\n---------------------------------------");
+    println!("\nPrivate - Multi Branch - Multiple Publishers per Branch\n");
+    examples::multi_pub_per_branch::example(url).await?;
+
+/*     println!("\n---------------------------------------");
 
     println!("\nTransaction simulation\n");
     let annoucement_msg: String = witness_rep::all_in_one_transaction_skel::transact(url).await?;
 
     println!("\nTransaction verification\n");
     witness_rep::verify_tx::verify_tx(url, annoucement_msg).await?;
-
+ */
 
     
 

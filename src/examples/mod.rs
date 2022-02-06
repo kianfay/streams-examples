@@ -1,8 +1,8 @@
-/* pub mod multi_publisher; */
+pub mod multi_publisher;
 pub mod single_publisher;
 pub mod utility;
 
-/* pub use multi_publisher::*; */
+pub use multi_publisher::*;
 pub use single_publisher::*; 
 pub use utility::*;
 
