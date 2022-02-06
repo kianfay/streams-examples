@@ -84,23 +84,6 @@ pub async fn transact(node_url: &str) -> Result<String> {
         "Announcement Link: {}\nTangle Index: {:#}\n",
         ann_link_string, announcement_link.to_msg_index()
     );
-
-    // tn_a processes the channel announcement
-    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes())?;
-    tn_a.receive_announcement(&ann_address).await?;
-
-    // tn_a sends subscription message; these are the subscription links that
-    // should be provided to the Author to complete subscription
-    let subscribe_msg_tn_a = tn_a.send_subscribe(&ann_address).await?;
-    let sub_msg_tn_a_str = subscribe_msg_tn_a.to_string();
-    println!(
-        "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
-        sub_msg_tn_a_str, subscribe_msg_tn_a.to_msg_index()
-    );
-
-    // author processes the subscription message
-    let sub_a_address = Address::try_from_bytes(&subscribe_msg_tn_a.to_bytes())?;
-    on_a.receive_subscribe(&sub_a_address).await?;
     
     //////----------------------------------------------------------------------------- 
     ////    **non-current stages are skipped/assumed** 
@@ -141,17 +124,28 @@ pub async fn transact(node_url: &str) -> Result<String> {
     // witnesses process the channel announcement
     //// ideally we would have another address object (for realism), however this causes an error
     ////let ann_address = Address::try_from_bytes(&announcement_link.to_bytes())?;
+    // tn_a processes the channel announcement
+    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes())?;
+    tn_a.receive_announcement(&ann_address).await?;
     wn_a.receive_announcement(&ann_address).await?;
     wn_b.receive_announcement(&ann_address).await?;
     tn_b.receive_announcement(&ann_address).await?;
 
     // witnesses send subscription messages
+    // tn_a sends subscription message; these are the subscription links that
+    // should be provided to the Author to complete subscription
+    let subscribe_msg_tn_a = tn_a.send_subscribe(&ann_address).await?;
     let subscribe_msg_wn_a = wn_a.send_subscribe(&ann_address).await?;
     let subscribe_msg_wn_b = wn_b.send_subscribe(&ann_address).await?;
     let subscribe_msg_tn_b = tn_b.send_subscribe(&ann_address).await?;
+    let sub_msg_tn_a_str = subscribe_msg_tn_a.to_string();
     let sub_msg_wn_a_str = subscribe_msg_wn_a.to_string();
     let sub_msg_wn_b_str = subscribe_msg_wn_b.to_string();
     let sub_msg_tn_b_str = subscribe_msg_tn_b.to_string();
+    println!(
+        "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
+        sub_msg_tn_a_str, subscribe_msg_tn_a.to_msg_index()
+    );
     println!(
         "Subscription msgs:\n\tSubscriber WN_A: {}\n\tTangle Index: {:#}\n",
         sub_msg_wn_a_str, subscribe_msg_wn_a.to_msg_index()
@@ -166,10 +160,13 @@ pub async fn transact(node_url: &str) -> Result<String> {
     );
 
     // Note that: sub_a = tn_a, sub_b = wn_a, sub_c = wn_b, sub_d = tn_b
+    // author processes the subscription message
+    let sub_a_address = Address::try_from_bytes(&subscribe_msg_tn_a.to_bytes())?;    
     let sub_b_address = Address::try_from_bytes(&subscribe_msg_wn_a.to_bytes())?;
     let sub_c_address = Address::try_from_bytes(&subscribe_msg_wn_b.to_bytes())?;
     let sub_d_address = Address::try_from_bytes(&subscribe_msg_tn_b.to_bytes())?;
 
+    on_a.receive_subscribe(&sub_a_address).await?;
     on_a.receive_subscribe(&sub_b_address).await?;
     on_a.receive_subscribe(&sub_c_address).await?;
     on_a.receive_subscribe(&sub_d_address).await?;
@@ -244,6 +241,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
     prev_msg_link = msg_link;
 
     // WN_B sends their witness statement
+    wn_a.sync_state().await;
     wn_b.sync_state().await;
     let (msg_link, _) = wn_b.send_signed_packet(
         &prev_msg_link,
@@ -259,11 +257,11 @@ pub async fn transact(node_url: &str) -> Result<String> {
 
     // -----------------------------------------------------------------------------
     // Author can now fetch these messages
-    let mut retrieved = on_a.fetch_all_next_msgs().await;
+/*     let mut retrieved = on_a.fetch_all_next_msgs().await;
     println!("\nAuthor found {} messages", retrieved.len());
 
     let mut retrieved_lists = split_retrieved(&mut retrieved, pks);
-    println!("\nVerifying message retrieval: Author");
+    println!("\nVerifying message retrieval: Author"); */
     //verify_messages(&tx_message, retrieved_lists.remove(0))?;
 
     //////-----------------------------------------------------------------------------
