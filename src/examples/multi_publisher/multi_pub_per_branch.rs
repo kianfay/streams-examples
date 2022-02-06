@@ -168,7 +168,7 @@ pub async fn example(node_url: &str) -> Result<()> {
         println!("Sent msg from Sub A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
         prev_msg_link = msg_link;
 
-/*         // Sub B Sends
+        // Sub B Sends
         subscriber_b.sync_state().await;
         let (msg_link, seq_link) = subscriber_b.send_signed_packet(
             &prev_msg_link,
@@ -177,7 +177,7 @@ pub async fn example(node_url: &str) -> Result<()> {
         ).await?;
         let seq_link = seq_link.unwrap();
         println!("Sent msg from Sub B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-        prev_msg_link = msg_link; */
+        prev_msg_link = msg_link;
     }
 
     // Subscribers C and D will now send encrypted messages in an alternating chain attached to Keyload B
@@ -188,6 +188,7 @@ pub async fn example(node_url: &str) -> Result<()> {
         "These".to_string()
     ];
 
+    prev_msg_link = keyload_b_link;
     for i in 0..msg_inputs_c.len() {
         // Sub C Sends
         subscriber_c.sync_state().await;
@@ -217,39 +218,12 @@ pub async fn example(node_url: &str) -> Result<()> {
     let mut retrieved = author.fetch_all_next_msgs().await;
     println!("\nAuthor found {} messages", retrieved.len());
     let mut retrieved_lists = split_retrieved(&mut retrieved, pks);
-    println!("\nVerifying message retrieval: Author");
+    println!("\nVerifying message retrieval: Author");/* 
     verify_messages(&msg_inputs_a, retrieved_lists.remove(0))?;
     verify_messages(&msg_inputs_b, retrieved_lists.remove(0))?;
+    verify_messages(&msg_inputs_c, retrieved_lists.remove(0))?;
+    verify_messages(&msg_inputs_d, retrieved_lists.remove(0))?; */
 
-    let msg_inputs_c = vec![
-        "These".to_string()
-    ];
-    let msg_inputs_d = vec![
-        "These".to_string()
-    ];
-
-/*     // Sub C Sends
-    subscriber_c.sync_state().await;
-    let (msg_link, seq_link) = subscriber_c.send_signed_packet(
-        &prev_msg_link,
-        &Bytes::default(),
-        &Bytes(msg_inputs_c[0].as_bytes().to_vec()),
-    ).await?;
-    let seq_link = seq_link.unwrap();
-    println!("Sent msg from Sub C: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-    prev_msg_link = msg_link;
-
-    // Sub D Sends
-    subscriber_d.sync_state().await;
-    let (msg_link, seq_link) = subscriber_d.send_signed_packet(
-        &prev_msg_link,
-        &Bytes::default(),
-        &Bytes(msg_inputs_d[0].as_bytes().to_vec()),
-    ).await?;
-    let seq_link = seq_link.unwrap();
-    println!("Sent msg from Sub D: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-    prev_msg_link = msg_link; */
-    
     Ok(())
 }
 
