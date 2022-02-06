@@ -10,12 +10,16 @@ use iota_streams::{
 use crate::examples::{verify_messages, ALPH9};
 use rand::Rng;
 use iota_streams::app::message::HasLink;
+use std::{thread, time::Duration};
 
 /**
  * In this example, the Author will generate a new branch for each Subscriber, and each Subscriber
  * will only post/read from their individual branches
 */
 pub async fn example(node_url: &str) -> Result<()> {
+
+    let wait_time = 0;//2000;
+
     // Generate a unique seed for the author
     let seed: &str = &(0..81)
         .map(|_| {
@@ -155,6 +159,7 @@ pub async fn example(node_url: &str) -> Result<()> {
     // ***********************  IMPORTANT  ****************************************
     // Before sending any messages, a publisher in a multi publisher channel should sync their state
     // to ensure they are up to date
+    thread::sleep(Duration::from_millis(wait_time));
     subscriber_a.sync_state().await;
 
     // Sub A Sends
@@ -187,6 +192,7 @@ pub async fn example(node_url: &str) -> Result<()> {
     ];
 
     // Sub C Sends
+    thread::sleep(Duration::from_millis(wait_time));
     subscriber_c.sync_state().await;
     let (msg_link, seq_link) = subscriber_c.send_signed_packet(
         &prev_msg_link,
@@ -198,6 +204,7 @@ pub async fn example(node_url: &str) -> Result<()> {
     prev_msg_link = msg_link;
 
     // Sub D Sends
+    thread::sleep(Duration::from_millis(wait_time));
     subscriber_d.sync_state().await;
     let (msg_link, seq_link) = subscriber_d.send_signed_packet(
         &prev_msg_link,
@@ -221,6 +228,7 @@ pub async fn example(node_url: &str) -> Result<()> {
 
 
     // Sub A Sends
+    thread::sleep(Duration::from_millis(wait_time));
     subscriber_a.sync_state().await;
     let (msg_link, seq_link) = subscriber_a.send_signed_packet(
         &prev_msg_link,
@@ -238,8 +246,9 @@ pub async fn example(node_url: &str) -> Result<()> {
     ////////
     
     // Sub B Sends
-    subscriber_a.sync_state().await;
-    let (msg_link, seq_link) = subscriber_a.send_signed_packet(
+    thread::sleep(Duration::from_millis(wait_time));
+    subscriber_b.sync_state().await;
+    let (msg_link, seq_link) = subscriber_b.send_signed_packet(
         &prev_msg_link,
         &Bytes::default(),
         &Bytes(msg_inputs_a[0].as_bytes().to_vec()),
