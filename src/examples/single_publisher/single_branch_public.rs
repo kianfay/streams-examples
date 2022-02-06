@@ -36,8 +36,9 @@ pub async fn example(node_url: &str) -> Result<()> {
 
     // Author will now send signed encrypted messages in a chain
     let msg_inputs = vec![
-        "These", "Messages", "Will", "Be", "Masked", "And", "Sent", "In", "A", "Chain",
+        "These".to_string(), "Messages".to_string(), "Will".to_string(), "Be...".to_string()
     ];
+
 
     let mut prev_msg_link = announcement_link;
     for input in &msg_inputs {

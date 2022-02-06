@@ -50,7 +50,7 @@ pub async fn example(node_url: &str) -> Result<()> {
     let mut subscriber_d = Subscriber::new("SubscriberD", client);
 
     // Generate an Address object from the provided announcement link from the Author
-    let ann_address = Address::from_bytes(&announcement_link.to_bytes());
+    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes())?;
 
     // Receive the announcement message to start listening to the channel
     subscriber_a.receive_announcement(&ann_address).await?;
@@ -102,16 +102,16 @@ pub async fn example(node_url: &str) -> Result<()> {
     ];
     // ----------------------------------------------------------------------
     // Get Address object from subscription message link provided by Subscriber A
-    let sub_a_address = Address::from_bytes(&subscribe_msg_a.to_bytes());
+    let sub_a_address = Address::try_from_bytes(&subscribe_msg_a.to_bytes())?;
 
     // Get Address object from subscription message link provided by SubscriberB
-    let sub_b_address = Address::from_bytes(&subscribe_msg_b.to_bytes());
+    let sub_b_address = Address::try_from_bytes(&subscribe_msg_b.to_bytes())?;
 
     // Get Address object from subscription message link provided by Subscriber C
-    let sub_c_address = Address::from_bytes(&subscribe_msg_c.to_bytes());
+    let sub_c_address = Address::try_from_bytes(&subscribe_msg_c.to_bytes())?;
 
     // Get Address object from subscription message link provided by Subscriber C
-    let sub_d_address = Address::from_bytes(&subscribe_msg_d.to_bytes());
+    let sub_d_address = Address::try_from_bytes(&subscribe_msg_d.to_bytes())?;
 
     // Author processes subscription messages
     author.receive_subscribe(&sub_a_address).await?;
@@ -164,6 +164,8 @@ pub async fn example(node_url: &str) -> Result<()> {
         "Susbscriber",
         "B",
     ];
+    let msg_inputs_a = msg_inputs_a.iter().map(|z| z.to_string()).collect();
+    let msg_inputs_b = msg_inputs_b.iter().map(|z| z.to_string()).collect();
 
     let mut prev_msg_link = keyload_a_link;
     for i in 0..msg_inputs_a.len() {

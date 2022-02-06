@@ -3,16 +3,13 @@ use anyhow::Result;
 mod examples;
 mod witness_rep;
 
-use crate::witness_rep::iota_did::create_and_upload_did::create_n_dids;
-use identity::crypto::PublicKey as IdPub;
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let url = "http://0.0.0.0:14265";
 
-    /* println!("Starting Examples");
+/*     println!("Starting Examples");
     println!("---------------------------------------");
-    println!("Single Publisher Examples");
+    println!("Single Publisher Examples"); 
 
     println!("\n---------------------------------------");
     println!("\nPublic - Single Branch - Single Publisher\n");
@@ -46,9 +43,15 @@ async fn main() -> Result<()> {
     examples::multi_pub_per_branch::example(url).await?; */
 
     println!("\n---------------------------------------");
-    println!("\nTransaction simulation\n");
-    witness_rep::all_in_one_transaction::transact(url).await?;
 
+    println!("\nTransaction simulation\n");
+    let annoucement_msg: String = witness_rep::all_in_one_transaction_skel::transact(url).await?;
+
+    println!("\nTransaction verification\n");
+    witness_rep::verify_tx::verify_tx(url, annoucement_msg).await?;
+
+
+    
 
 /* 
     println!("\n---------------------------------------");

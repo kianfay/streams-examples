@@ -37,7 +37,7 @@ pub async fn example(node_url: &str) -> Result<()> {
     // ------------------------------------------------------------------
     // In their own separate instances generate the subscriber(s) that will be attaching to the channel
     let mut subscriber_a = Subscriber::new("SubscriberA", client.clone());
-    let mut subscriber_b = Subscriber::new("SubscriberB", client);
+    let mut subscriber_b = Subscriber::new("SubscriberB", client.clone());
 
     // Generate an Address object from the provided announcement link string from the Author
     let ann_address = Address::from_str(&ann_link_string)?;
@@ -76,7 +76,7 @@ pub async fn example(node_url: &str) -> Result<()> {
 
     // Author will now send signed encrypted messages in a chain
     let msg_inputs = vec![
-        "These", "Messages", "Will", "Be", "Masked", "And", "Sent", "In", "A", "Chain",
+        "These".to_string(), "Messages".to_string(), "Will".to_string(), "Be".to_string()
     ];
 
     let mut prev_msg_link = keyload_link;
@@ -91,11 +91,24 @@ pub async fn example(node_url: &str) -> Result<()> {
     }
 
     // -----------------------------------------------------------------------------
-    // Subscribers can now fetch these messages
+
+    /* // Subscribers can now fetch these messages
     let mut retrieved = subscriber_a.fetch_all_next_msgs().await;
     verify_messages(&msg_inputs, retrieved)?;
 
     retrieved = subscriber_b.fetch_all_next_msgs().await;
+    verify_messages(&msg_inputs, retrieved)?; */
+
+    // In their own separate instances generate the subscriber(s) that will be attaching to the channel
+    let mut subscriber = Subscriber::new("SubscriberA", client);
+
+    // Generate an Address object from the provided announcement link string from the Author
+    let ann_address = Address::from_str(&ann_link_string)?;
+
+    // Receive the announcement message to start listening to the channel
+    subscriber.receive_announcement(&ann_address).await?;
+
+    let retrieved = subscriber.fetch_all_next_msgs().await;
     verify_messages(&msg_inputs, retrieved)?;
 
     Ok(())

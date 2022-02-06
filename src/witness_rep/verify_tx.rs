@@ -1,14 +1,47 @@
-// can use serde_json::from_str(...) to get it to be a trans
+use identity::crypto::{Ed25519, Verify};
+use iota_streams::{
+    app::transport::tangle::{client::Client, TangleAddress},
+    app_channels::api::tangle::{
+        Address, Author, Bytes, ChannelType, MessageContent, Subscriber,
+        UnwrappedMessage, PublicKey
+    },
+    core::{println, Result},
+};
+use crate::witness_rep::utility::extract_msgs;
+
+use core::str::FromStr;
+
 use crate::witness_rep::messages::signatures;
 use crate::witness_rep::messages::transaction_msgs::{
     TransactionMsg, ArrayOfTxSignitures, ArrayOfWnSignitures 
 };
 
-use identity::crypto::{Ed25519, Verify};
+pub async fn verify_tx(node_url: &str, ann_msg: String) -> Result<bool> {
+    
+    // create the subscriber
+    let client = Client::new_from_url(node_url);
+    let mut verifier_sub = Subscriber::new("SubscriberA", client);
 
-pub fn verify_tx(tx: TransactionMsg, tn_pubkey: Vec<String>, wn_pubkey: Vec<String>) -> bool {
+    // Generate an Address object from the provided announcement link string from the Author
+    let ann_address = Address::from_str(&ann_msg)?;
 
-    let (ArrayOfWnSignitures(wit_sigs), ArrayOfTxSignitures(tn_sigs)) = get_sigs(tx);
+    // Receive the announcement message to start listening to the channel
+    verifier_sub.receive_announcement(&ann_address).await?;
+
+    // fetch and extract the messages
+    let retrieved = verifier_sub.fetch_all_next_msgs().await;
+    let msgs = extract_msgs::extract_msg(retrieved);
+
+    // deserialise the messages into their correct types
+    println!("{:?}", msgs);
+
+    return Ok(false);
+}
+
+pub fn verify_msg(tx_msg: TransactionMsg) -> bool {
+
+    let (ArrayOfWnSignitures(wit_sigs), ArrayOfTxSignitures(tn_sigs)) = get_sigs(tx_msg);
+    
     for ws in wit_sigs.iter() {
         if verify_witness_sig(ws.clone()) == false {
             return false;
