@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
     println!("\n---------------------------------------");
 
     println!("\nTransaction simulation\n");
-    let annoucement_msg: String = witness_rep::all_in_one_transaction_skel::transact(url).await?;
+    let annoucement_msg: String = witness_rep::all_in_one_transaction::transact(url).await?;
 
     println!("\nTransaction verification\n");
     witness_rep::verify_tx::verify_tx(url, annoucement_msg).await?;

@@ -215,6 +215,9 @@ pub async fn transact(node_url: &str) -> Result<String> {
     // TN_A sends the transaction
     let mut prev_msg_link = keyload_a_link;
     tn_a.sync_state().await;
+    tn_b.sync_state().await;
+    wn_a.sync_state().await;
+    wn_b.sync_state().await;
     let (msg_link, _) = tn_a.send_signed_packet(
         &prev_msg_link,
         &Bytes(dm.clone()),
@@ -234,7 +237,10 @@ pub async fn transact(node_url: &str) -> Result<String> {
 
 
     // WN_A sends their witness statement
+    tn_a.sync_state().await;
+    tn_b.sync_state().await;
     wn_a.sync_state().await;
+    wn_b.sync_state().await;
     let (msg_link, _) = wn_a.send_signed_packet(
         &prev_msg_link,
         &Bytes(dm.clone()),
@@ -244,6 +250,9 @@ pub async fn transact(node_url: &str) -> Result<String> {
     prev_msg_link = msg_link;
 
     // WN_B sends their witness statement
+    tn_a.sync_state().await;
+    tn_b.sync_state().await;
+    wn_a.sync_state().await;
     wn_b.sync_state().await;
     let (msg_link, _) = wn_b.send_signed_packet(
         &prev_msg_link,
@@ -280,6 +289,9 @@ pub async fn transact(node_url: &str) -> Result<String> {
 
     // TN_A sends the compensation transaction
     tn_a.sync_state().await;
+    tn_b.sync_state().await;
+    wn_a.sync_state().await;
+    wn_b.sync_state().await;
     let (msg_link, _) = tn_a.send_signed_packet(
         &prev_msg_link,
         &Bytes(compensation_tx_tn_a[0].as_bytes().to_vec()),
@@ -296,7 +308,10 @@ pub async fn transact(node_url: &str) -> Result<String> {
     ];
 
     // TN_B sends the compensation transaction
+    tn_a.sync_state().await;
     tn_b.sync_state().await;
+    wn_a.sync_state().await;
+    wn_b.sync_state().await;
     let (msg_link, _) = tn_b.send_signed_packet(
         &prev_msg_link,
         &Bytes(compensation_tx_tn_b[0].as_bytes().to_vec()),
