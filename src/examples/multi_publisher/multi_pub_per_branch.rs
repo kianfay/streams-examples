@@ -10,12 +10,16 @@ use iota_streams::{
 use crate::examples::{verify_messages, ALPH9};
 use rand::Rng;
 use iota_streams::app::message::HasLink;
+use std::{thread, time::Duration};
 
 /**
  * In this example, the Author will generate a new branch for each Subscriber, and each Subscriber
  * will only post/read from their individual branches
 */
 pub async fn example(node_url: &str) -> Result<()> {
+
+    let wait_time = 0;//20000;
+
     // Generate a unique seed for the author
     let seed: &str = &(0..81)
         .map(|_| {
@@ -126,114 +130,99 @@ pub async fn example(node_url: &str) -> Result<()> {
     // Into conversion. This will return a tuple containing the message links. The first is the
     // message link itself, the second is the sequencing message link.
     let (keyload_a_link, _seq_a_link) =
-        author.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into(), pks[2].into(), pks[3].into()]).await?;
+        author.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into(),pks[2].into(), pks[3].into()]).await?;
     println!(
         "\nSent Keyload for Sub A and B: {}, tangle index: {:#}",
         keyload_a_link,
         _seq_a_link.unwrap()
     );
 
-    // Author will send the second Keyload with the public key of Subscribers C and D (also linked
+/*     // Author will send the second Keyload with the public key of Subscribers C and D (also linked
     // to the announcement message) to generate another new branch
     let (keyload_b_link, _seq_b_link) =
-        author.send_keyload(&announcement_link, &vec![]).await?;
+        author.send_keyload(&announcement_link, &vec![pks[2].into(), pks[3].into()]).await?;
     println!(
         "\nSent Keyload for Sub C and D: {}, tangle index: {:#}\n",
         keyload_b_link,
         _seq_b_link.unwrap()
-    );
+    ); */
 
     // Subscribers A and B will now send encrypted messages in an alternating chain attached to Keyload A
     let msg_inputs_a = vec![
-        "These"
+        "These".to_string()
     ];
     let msg_inputs_b = vec![
-        "These"
-    ];
-
-    // Subscribers C and D will now send encrypted messages in an alternating chain attached to Keyload B
-    let msg_inputs_c = vec![
-        "These"
-    ];
-    let msg_inputs_d = vec![
-        "These"
+        "These".to_string()
     ];
 
     let mut prev_msg_link = keyload_a_link;
-    for i in 0..msg_inputs_a.len() {
-        // ***********************  IMPORTANT  ****************************************
-        // Before sending any messages, a publisher in a multi publisher channel should sync their state
-        // to ensure they are up to date
-        subscriber_a.sync_state().await;
+    // ***********************  IMPORTANT  ****************************************
+    // Before sending any messages, a publisher in a multi publisher channel should sync their state
+    // to ensure they are up to date
+    thread::sleep(Duration::from_millis(wait_time));
+    subscriber_a.sync_state().await;
+    subscriber_b.sync_state().await;
+    subscriber_c.sync_state().await;
+    subscriber_d.sync_state().await;
 
-        // Sub A Sends
-        let (msg_link, seq_link) = subscriber_a.send_signed_packet(
-            &prev_msg_link,
-            &Bytes::default(),
-            &Bytes(msg_inputs_a[i].as_bytes().to_vec()),
-        ).await?;
-        let seq_link = seq_link.unwrap();
-        println!("Sent msg from Sub A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-        prev_msg_link = msg_link;
+    // Sub A Sends
+    let (msg_link, seq_link) = subscriber_a.send_signed_packet(
+        &prev_msg_link,
+        &Bytes::default(),
+        &Bytes(msg_inputs_a[0].as_bytes().to_vec()),
+    ).await?;
+    let seq_link = seq_link.unwrap();
+    println!("Sent msg from Sub A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+    prev_msg_link = msg_link;
 
-        // Sub B Sends
-        subscriber_b.sync_state().await;
-        let (msg_link, seq_link) = subscriber_b.send_signed_packet(
-            &prev_msg_link,
-            &Bytes::default(),
-            &Bytes(msg_inputs_b[i].as_bytes().to_vec()),
-        ).await?;
-        let seq_link = seq_link.unwrap();
-        println!("Sent msg from Sub B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-        prev_msg_link = msg_link;
+/*         // Sub B Sends
+    subscriber_b.sync_state().await;
+    let (msg_link, seq_link) = subscriber_b.send_signed_packet(
+        &prev_msg_link,
+        &Bytes::default(),
+        &Bytes(msg_inputs_b[i].as_bytes().to_vec()),
+    ).await?;
+    let seq_link = seq_link.unwrap();
+    println!("Sent msg from Sub B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+    prev_msg_link = msg_link; */
 
-        // Sub C Sends
-        subscriber_c.sync_state().await;
-        let (msg_link, seq_link) = subscriber_c.send_signed_packet(
-            &prev_msg_link,
-            &Bytes::default(),
-            &Bytes(msg_inputs_c[i].as_bytes().to_vec()),
-        ).await?;
-        let seq_link = seq_link.unwrap();
-        println!("Sent msg from Sub C: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-        prev_msg_link = msg_link;
+    // Subscribers C and D will now send encrypted messages in an alternating chain attached to Keyload B
+    let msg_inputs_c = vec![
+        "These".to_string()
+    ];
+    let msg_inputs_d = vec![
+        "These".to_string()
+    ];
 
-        // Sub D Sends
-        subscriber_d.sync_state().await;
-        let (msg_link, seq_link) = subscriber_d.send_signed_packet(
-            &prev_msg_link,
-            &Bytes::default(),
-            &Bytes(msg_inputs_d[i].as_bytes().to_vec()),
-        ).await?;
-        let seq_link = seq_link.unwrap();
-        println!("Sent msg from Sub D: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-        prev_msg_link = msg_link;
-    }
+    // Sub C Sends
+    thread::sleep(Duration::from_millis(wait_time));
+    subscriber_a.sync_state().await;
+    subscriber_b.sync_state().await;
+    subscriber_c.sync_state().await;
+    subscriber_d.sync_state().await;
+    let (msg_link, seq_link) = subscriber_c.send_signed_packet(
+        &prev_msg_link,
+        &Bytes::default(),
+        &Bytes(msg_inputs_c[0].as_bytes().to_vec()),
+    ).await?;
+    let seq_link = seq_link.unwrap();
+    println!("Sent msg from Sub C: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+    prev_msg_link = msg_link;
 
-
-/*     for i in 0..msg_inputs_c.len() {
-        // Sub C Sends
-        subscriber_c.sync_state().await;
-        let (msg_link, seq_link) = subscriber_c.send_signed_packet(
-            &prev_msg_link,
-            &Bytes::default(),
-            &Bytes(msg_inputs_c[i].as_bytes().to_vec()),
-        ).await?;
-        let seq_link = seq_link.unwrap();
-        println!("Sent msg from Sub C: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-        prev_msg_link = msg_link;
-
-        // Sub D Sends
-        subscriber_d.sync_state().await;
-        let (msg_link, seq_link) = subscriber_d.send_signed_packet(
-            &prev_msg_link,
-            &Bytes::default(),
-            &Bytes(msg_inputs_d[i].as_bytes().to_vec()),
-        ).await?;
-        let seq_link = seq_link.unwrap();
-        println!("Sent msg from Sub D: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-        prev_msg_link = msg_link;
-    } */
+    // Sub D Sends
+    thread::sleep(Duration::from_millis(wait_time));
+    subscriber_a.sync_state().await;
+    subscriber_b.sync_state().await;
+    subscriber_c.sync_state().await;
+    subscriber_d.sync_state().await;
+    let (msg_link, seq_link) = subscriber_d.send_signed_packet(
+        &prev_msg_link,
+        &Bytes::default(),
+        &Bytes(msg_inputs_d[0].as_bytes().to_vec()),
+    ).await?;
+    let seq_link = seq_link.unwrap();
+    println!("Sent msg from Sub D: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+    prev_msg_link = msg_link;
 
     // -----------------------------------------------------------------------------
     // Author can now fetch these messages
@@ -245,6 +234,43 @@ pub async fn example(node_url: &str) -> Result<()> {
     verify_messages(&msg_inputs_b, retrieved_lists.remove(0))?;
     verify_messages(&msg_inputs_c, retrieved_lists.remove(0))?;
     verify_messages(&msg_inputs_d, retrieved_lists.remove(0))?; */
+
+
+    // Sub A Sends
+    thread::sleep(Duration::from_millis(wait_time));
+    subscriber_a.sync_state().await;
+    subscriber_b.sync_state().await;
+    subscriber_c.sync_state().await;
+    subscriber_d.sync_state().await;
+    let (msg_link, seq_link) = subscriber_a.send_signed_packet(
+        &prev_msg_link,
+        &Bytes::default(),
+        &Bytes(msg_inputs_a[0].as_bytes().to_vec()),
+    ).await?;
+    let seq_link = seq_link.unwrap();
+    println!("Sent msg from Sub A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+    prev_msg_link = msg_link;
+
+
+    ////////
+    ///         IOSLATED PROBLEM TO SUB_B SYNCING BADLY, MAYBE BECAUSE IT HAS NOT SYNCED BEFORE THIS
+    ///         PROVEN BY SWAPPING TN_B FOR TN_A AND GETTING A SUCCESFULL RUN
+    ////////
+    
+    // Sub B Sends
+    thread::sleep(Duration::from_millis(wait_time));
+    subscriber_a.sync_state().await;
+    subscriber_b.sync_state().await;
+    subscriber_c.sync_state().await;
+    subscriber_d.sync_state().await;
+    let (msg_link, seq_link) = subscriber_b.send_signed_packet(
+        &prev_msg_link,
+        &Bytes::default(),
+        &Bytes(msg_inputs_a[0].as_bytes().to_vec()),
+    ).await?;
+    let seq_link = seq_link.unwrap();
+    println!("Sent msg from Sub B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+    prev_msg_link = msg_link;
 
     Ok(())
 }
