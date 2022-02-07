@@ -126,7 +126,7 @@ pub async fn example(node_url: &str) -> Result<()> {
     // Into conversion. This will return a tuple containing the message links. The first is the
     // message link itself, the second is the sequencing message link.
     let (keyload_a_link, _seq_a_link) =
-        author.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into()]).await?;
+        author.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into(),pks[2].into(), pks[3].into()]).await?;
     println!(
         "\nSent Keyload for Sub A and B: {}, tangle index: {:#}",
         keyload_a_link,
@@ -143,29 +143,14 @@ pub async fn example(node_url: &str) -> Result<()> {
         _seq_b_link.unwrap()
     );
 
+    let dm: Vec<u8> = [80,81].to_vec();
     // Subscribers A and B will now send encrypted messages in an alternating chain attached to Keyload A
     let msg_inputs_a = vec![
-        "These",
-        "Messages",
-        "Will",
-        "Be",
-        "Sent",
-        "By",
-        "Susbscriber",
-        "A",
+        "These".to_string()
     ];
     let msg_inputs_b = vec![
-        "These",
-        "Messages",
-        "Will",
-        "Be",
-        "Sent",
-        "By",
-        "Susbscriber",
-        "B",
+        "These".to_string()
     ];
-    let msg_inputs_a = msg_inputs_a.iter().map(|z| z.to_string()).collect();
-    let msg_inputs_b = msg_inputs_b.iter().map(|z| z.to_string()).collect();
 
     let mut prev_msg_link = keyload_a_link;
     for i in 0..msg_inputs_a.len() {
@@ -198,24 +183,10 @@ pub async fn example(node_url: &str) -> Result<()> {
 
     // Subscribers C and D will now send encrypted messages in an alternating chain attached to Keyload B
     let msg_inputs_c = vec![
-        "These",
-        "Messages",
-        "Will",
-        "Be",
-        "Sent",
-        "By",
-        "Subscriber",
-        "C",
+        "These".to_string()
     ];
     let msg_inputs_d = vec![
-        "These",
-        "Messages",
-        "Will",
-        "Be",
-        "Sent",
-        "By",
-        "Subscriber",
-        "D",
+        "These".to_string()
     ];
 
     prev_msg_link = keyload_b_link;
@@ -269,6 +240,8 @@ fn split_retrieved(
     // Sort messages by sender
     for _ in 0..retrieved.len() {
         let msg = retrieved.remove(0);
+        println!("whole obj:{:?}", msg);
+        println!("just body:{:?}", msg.body);
         let pk = match msg.body {
             MessageContent::SignedPacket {
                 pk,
