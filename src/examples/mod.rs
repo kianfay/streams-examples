@@ -3,7 +3,7 @@ pub mod single_publisher;
 pub mod utility;
 
 pub use multi_publisher::*;
-pub use single_publisher::*; 
+pub use single_publisher::*;
 pub use utility::*;
 
 use anyhow::Result;
@@ -12,7 +12,7 @@ use iota_streams::app_channels::api::tangle::{MessageContent, UnwrappedMessage};
 pub const ALPH9: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ9";
 
 // Iterate through the retrieved messages to ensure they match those that were sent
-pub fn verify_messages(sent_msgs: &[String], retrieved_msgs: Vec<UnwrappedMessage>) -> Result<()> {
+pub fn verify_messages(sent_msgs: &[&str], retrieved_msgs: Vec<UnwrappedMessage>) -> Result<()> {
     let processed_msgs = retrieved_msgs
         .iter()
         .map(|msg| {
@@ -20,9 +20,9 @@ pub fn verify_messages(sent_msgs: &[String], retrieved_msgs: Vec<UnwrappedMessag
             match content {
                 MessageContent::SignedPacket {
                     pk: _,
-                    public_payload,
-                    masked_payload: _,
-                } => String::from_utf8(public_payload.0.to_vec()).unwrap(),
+                    public_payload: _,
+                    masked_payload,
+                } => String::from_utf8(masked_payload.0.to_vec()).unwrap(),
                 _ => String::default(),
             }
         })
