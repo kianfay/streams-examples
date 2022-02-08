@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WitnessPreSig {
     pub contract: Contract,
+    pub signer_channel_pubkey: String,
     pub timeout: u32,
 }
 
@@ -15,14 +16,16 @@ pub struct WitnessPreSig {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WitnessSig {
     pub contract: Contract,
+    pub signer_channel_pubkey: String,
     pub timeout: u32,
-    pub signer_pubkey: String,
+    pub signer_did_pubkey: String,
     pub signature: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TransactingPreSig {
     pub contract: Contract,
+    pub signer_channel_pubkey: String,
     pub witnesses: WitnessClients,
     pub wit_node_sigs: ArrayOfWnSignitures,
     pub timeout: u32,
@@ -31,9 +34,10 @@ pub struct TransactingPreSig {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TransactingSig {
     pub contract: Contract,
+    pub signer_channel_pubkey: String,
     pub witnesses: WitnessClients,
     pub wit_node_sigs: ArrayOfWnSignitures,
     pub timeout: u32,
-    pub signer_pubkey: String,
+    pub signer_did_pubkey: String,
     pub signature: Vec<u8>,
 }

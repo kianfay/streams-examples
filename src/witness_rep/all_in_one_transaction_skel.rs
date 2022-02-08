@@ -22,8 +22,6 @@ use crate::witness_rep::messages::{
 };
 use crate::witness_rep::iota_did::create_and_upload_did::create_n_dids;
 use crate::witness_rep::iota_did::create_and_upload_did::Key;
-use crate::witness_rep::verify_tx;
-
 /**
  * Six nodes interaction:
  *  - Transacting node A (TN_A)

@@ -14,6 +14,7 @@ use identity::{
 };
 use rand::Rng;
 use std::{thread, time::Duration};
+use iota_streams::core_edsig::signature::ed25519;
 
 use crate::examples::{verify_messages, ALPH9};
 use crate::witness_rep::messages::{ 
@@ -59,6 +60,32 @@ pub async fn transact(node_url: &str) -> Result<String> {
     let mut tn_b = Subscriber::new("Transacting Node B", client.clone());
     let mut wn_a = Subscriber::new("Witness Node A", client.clone());
     let mut wn_b = Subscriber::new("Witness Node B", client.clone());
+    
+    let pks_as_multibase;
+    if let MethodData::PublicKeyMultibase(multibase_pub_tn_a) = MethodData::new_multibase(tn_a.get_public_key()){
+        if let MethodData::PublicKeyMultibase(multibase_pub_tn_b) = MethodData::new_multibase(tn_b.get_public_key()){
+            if let MethodData::PublicKeyMultibase(multibase_pub_wn_a) = MethodData::new_multibase(wn_a.get_public_key()){
+                if let MethodData::PublicKeyMultibase(multibase_pub_wn_b) = MethodData::new_multibase(wn_b.get_public_key()){
+                    pks_as_multibase = vec![
+                        multibase_pub_tn_a,
+                        multibase_pub_tn_b,
+                        multibase_pub_wn_a,
+                        multibase_pub_wn_b,
+                    ];
+                } else {
+                    panic!("Failed to extract multibase pubkey")
+                }
+            } else {
+                panic!("Failed to extract multibase pubkey")
+            }
+        } else {
+            panic!("Failed to extract multibase pubkey")
+        }
+    } else {
+        panic!("Failed to extract multibase pubkey")
+    }
+
+
 
     //////-----------------------------------------------------------------------------
     ////    PREREQUISITES 2 (CURRENT) - ON_A ALREADY HAS A CHANNEL SET UP TO BE USED BY CLIENTS FOR THIS PURPOSE
@@ -168,6 +195,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
     // WN_A signs their response
     let wn_a_pre_sig = signatures::WitnessPreSig {
         contract: contract_by_tn_a.clone(),
+        signer_channel_pubkey: pks_as_multibase[2].clone(),
         timeout: DEFAULT_TIMEOUT,
     };
     println!("IMPORTANT: {:?}", wn_a_pre_sig);
@@ -176,14 +204,16 @@ pub async fn transact(node_url: &str) -> Result<String> {
 
     let wn_a_sig = signatures::WitnessSig {
         contract: contract_by_tn_a.clone(),
+        signer_channel_pubkey: pks_as_multibase[2].clone(),
         timeout: DEFAULT_TIMEOUT,
-        signer_pubkey: did_pubkeys[2].clone(),
+        signer_did_pubkey: did_pubkeys[2].clone(),
         signature: wn_a_sig_bytes.to_vec(),
     };
 
     // WN_B signs their response
     let wn_b_pre_sig = signatures::WitnessPreSig {
         contract: contract_by_tn_a.clone(),
+        signer_channel_pubkey: pks_as_multibase[3].clone(),
         timeout: DEFAULT_TIMEOUT,
     };
     let wn_b_pre_sig_bytes = serde_json::to_string(&wn_b_pre_sig)?;
@@ -191,8 +221,9 @@ pub async fn transact(node_url: &str) -> Result<String> {
 
     let wn_b_sig = signatures::WitnessSig {
         contract: contract_by_tn_a.clone(),
+        signer_channel_pubkey: pks_as_multibase[3].clone(),
         timeout: DEFAULT_TIMEOUT,
-        signer_pubkey: did_pubkeys[3].clone(),
+        signer_did_pubkey: did_pubkeys[3].clone(),
         signature: wn_b_sig_bytes.to_vec(),
     };
 
@@ -204,6 +235,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
     // TN_A signs the transaction
     let tn_a_tx_msg_pre_sig = signatures::TransactingPreSig {
         contract: contract_by_tn_a.clone(),
+        signer_channel_pubkey: pks_as_multibase[0].clone(),
         witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
         wit_node_sigs: transaction_msgs::ArrayOfWnSignitures(
             [
@@ -219,6 +251,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
 
     let tn_a_tx_msg_pre_sig = signatures::TransactingSig {
         contract: contract_by_tn_a.clone(),
+        signer_channel_pubkey: pks_as_multibase[0].clone(),
         witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
         wit_node_sigs: transaction_msgs::ArrayOfWnSignitures(
             [
@@ -228,13 +261,14 @@ pub async fn transact(node_url: &str) -> Result<String> {
             .to_vec()
         ),
         timeout: DEFAULT_TIMEOUT,
-        signer_pubkey: did_pubkeys[0].clone(),
+        signer_did_pubkey: did_pubkeys[0].clone(),
         signature: tn_a_tx_msg_sig.to_vec()
     };
 
     // TN_B signs the transaction
     let tn_b_tx_msg_pre_sig = signatures::TransactingPreSig {
         contract: contract_by_tn_a.clone(),
+        signer_channel_pubkey: pks_as_multibase[1].clone(),
         witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
         wit_node_sigs: transaction_msgs::ArrayOfWnSignitures(
             [
@@ -250,6 +284,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
 
     let tn_b_tx_msg_pre_sig = signatures::TransactingSig {
         contract: contract_by_tn_a.clone(),
+        signer_channel_pubkey: pks_as_multibase[1].clone(),
         witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
         wit_node_sigs: transaction_msgs::ArrayOfWnSignitures(
             [
@@ -259,7 +294,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
             .to_vec()
         ),
         timeout: DEFAULT_TIMEOUT,
-        signer_pubkey: did_pubkeys[1].clone(),
+        signer_did_pubkey: did_pubkeys[1].clone(),
         signature: tn_b_tx_msg_sig.to_vec()
     };
 

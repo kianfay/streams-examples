@@ -1,6 +1,13 @@
-use iota_streams::app_channels::api::tangle::{MessageContent, UnwrappedMessage};
+use iota_streams::app_channels::api::tangle::{
+    MessageContent, UnwrappedMessage
+};
+use identity::{
+    did::MethodData,
+    crypto::{KeyPair, Ed25519, Sign}
+};
 
-pub fn extract_msg(retrieved_msgs: Vec<UnwrappedMessage>) -> Vec<String> {
+// Ectracts all message payloads and pubkeys
+pub fn extract_msg(retrieved_msgs: Vec<UnwrappedMessage>) -> Vec<(String, String)> {
     
     println!("");
     println!("Length: {}", retrieved_msgs.len());
@@ -12,16 +19,26 @@ pub fn extract_msg(retrieved_msgs: Vec<UnwrappedMessage>) -> Vec<String> {
                 let content = &msg.body;
                 match content {
                     MessageContent::SignedPacket {
-                        pk: _,
+                        pk,
                         public_payload,
                         masked_payload: _,
                     } => {
                         let pay = String::from_utf8(public_payload.0.to_vec()).unwrap();
-                        return pay;
+                        let pubk = MethodData::new_multibase(pk);
+                        if let MethodData::PublicKeyMultibase(mbpub) = pubk {
+                            return (pay, mbpub);
+                        } else {
+                            let empty_str = String::default();
+                            return (empty_str.clone(), empty_str.clone());
+                        }
+                        
                     },
-                    _ => String::default(),
+                    _ => {
+                        let empty_str = String::default();
+                        return (empty_str.clone(), empty_str.clone());
+                    }
                 }
             })
-            .filter(|s| s != &String::default())
-            .collect::<Vec<String>>();
+            .filter(|(s1, s2)| s1 != &String::default() || s2 != &String::default())
+            .collect::<Vec<(String,String)>>();
 }
