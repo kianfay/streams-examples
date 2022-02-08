@@ -17,8 +17,15 @@ use crate::witness_rep::messages::transaction_msgs::{
 };
 
 pub async fn verify_tx(node_url: &str, ann_msg: String) -> Result<bool> {
+    let client1 = Client::new_from_url(node_url);
+    let mut reader = Subscriber::new("Transacting Node A", client1.clone());
+    let ann_address_2 = Address::from_str(&ann_msg)?;
+    reader.receive_announcement(&ann_address_2).await?;
+    let mut retrieved = reader.fetch_all_next_msgs().await;
+    println!("\nAuthor found {} messages", retrieved.len());
+    let msgs = extract_msgs::extract_msg(retrieved);
     
-    // create the subscriber
+    /* // create the subscriber
     let client = Client::new_from_url(node_url);
     let mut verifier_sub = Subscriber::new("SubscriberA", client);
 
@@ -27,6 +34,7 @@ pub async fn verify_tx(node_url: &str, ann_msg: String) -> Result<bool> {
 
     // Receive the announcement message to start listening to the channel
     verifier_sub.receive_announcement(&ann_address).await?;
+    //verifier_sub.sync_state().await;
 
     // fetch and extract the messages
     let retrieved = verifier_sub.fetch_all_next_msgs().await;
@@ -36,7 +44,7 @@ pub async fn verify_tx(node_url: &str, ann_msg: String) -> Result<bool> {
     let msgs = extract_msgs::extract_msg(retrieved);
 
     // deserialise the messages into their correct types
-    println!("{:?}", msgs);
+    println!("{:?}", msgs); */
 
     return Ok(false);
 }

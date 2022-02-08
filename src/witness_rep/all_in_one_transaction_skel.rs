@@ -7,6 +7,7 @@ use iota_streams::{
     core::{println, Result},
     app::message::HasLink
 };
+use core::str::FromStr;
 //iota_streams::iota_streams_app::transport::tangle::TangleAddress
 use identity::{
     did::MethodData,
@@ -21,6 +22,7 @@ use crate::witness_rep::messages::{
 };
 use crate::witness_rep::iota_did::create_and_upload_did::create_n_dids;
 use crate::witness_rep::iota_did::create_and_upload_did::Key;
+use crate::witness_rep::verify_tx;
 
 /**
  * Six nodes interaction:
@@ -77,7 +79,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
         .collect::<String>();
     
     // on_a creates the channel
-    let mut on_a = Author::new(seed, ChannelType::SingleBranch, client);
+    let mut on_a = Author::new(seed, ChannelType::SingleBranch, client.clone());
     let announcement_link = on_a.send_announce().await?;
     let ann_link_string = announcement_link.to_string();
     println!(
@@ -276,7 +278,10 @@ pub async fn transact(node_url: &str) -> Result<String> {
 
     // -----------------------------------------------------------------------------
     // Author can now fetch these messages
-    let mut retrieved = on_a.fetch_all_next_msgs().await;
+    let mut reader = Subscriber::new("Transacting Node A", client.clone());
+    let ann_address_2 = Address::from_str(&ann_link_string)?;
+    reader.receive_announcement(&ann_address_2).await?;
+    let mut retrieved = reader.fetch_all_next_msgs().await;
     println!("\nAuthor found {} messages", retrieved.len());
 
     let mut retrieved_lists = split_retrieved(&mut retrieved, pks.clone());
@@ -288,7 +293,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
     //////-----------------------------------------------------------------------------
     ////    STAGE 16 (CURRENT) - RELEVANT NODES COMPENSATE THE PREDEFINED NODES TO BE COMPENSATED
     //////-----------------------------------------------------------------------------
-
+/* 
     let compensation_tx_tn_a = vec![
         "{
             \'pay_to_tn_b\': 0.1,
@@ -328,16 +333,16 @@ pub async fn transact(node_url: &str) -> Result<String> {
         &Bytes(compensation_tx_tn_b[0].as_bytes().to_vec()),
     ).await?;
     println!("Sent msg from TN_B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-    //prev_msg_link = msg_link;
+    //prev_msg_link = msg_link; */
 
-    // We read the transaction + witness statement + compensation
+/*     // We read the transaction + witness statement + compensation
     let mut retrieved = on_a.fetch_all_next_msgs().await;
     println!("\nAuthor found {} messages", retrieved.len());
 
     let mut retrieved_lists = split_retrieved(&mut retrieved, pks);
     println!("\nVerifying message retrieval: Author");
     verify_messages(&msg_inputs_a, retrieved_lists.remove(0))?;
-    verify_messages(&witness_c_message, retrieved_lists.remove(2))?;
+    verify_messages(&witness_c_message, retrieved_lists.remove(2))?; */
 
     //////-----------------------------------------------------------------------------
     ////    ------FINISHED------
