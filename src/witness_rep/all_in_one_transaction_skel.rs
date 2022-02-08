@@ -224,8 +224,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     wn_b.sync_state().await;
     let (msg_link, _) = tn_a.send_signed_packet(
         &prev_msg_link,
-        &Bytes::default(),
         &Bytes(msg_inputs_a[0].as_bytes().to_vec()),
+        &Bytes::default(),
     ).await?;
     println!("Sent msg from TN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     prev_msg_link = msg_link;
@@ -253,8 +253,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     wn_b.sync_state().await;
     let (msg_link, _) = wn_a.send_signed_packet(
         &prev_msg_link,
-        &Bytes::default(),
         &Bytes(witness_c_message[0].as_bytes().to_vec()),
+        &Bytes::default(),
     ).await?;
     println!("Sent msg from WN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     prev_msg_link = msg_link;
@@ -266,8 +266,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     wn_b.sync_state().await;
     let (msg_link, _) = wn_b.send_signed_packet(
         &prev_msg_link,
-        &Bytes::default(),
         &Bytes(witness_d_message[0].as_bytes().to_vec()),
+        &Bytes::default(),
     ).await?;
     println!("Sent msg from WN_B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     prev_msg_link = msg_link;
@@ -309,8 +309,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     wn_b.sync_state().await;
     let (msg_link, _) = tn_a.send_signed_packet(
         &prev_msg_link,
-        &Bytes::default(),
         &Bytes(compensation_tx_tn_a[0].as_bytes().to_vec()),
+        &Bytes::default(),
     ).await?;
     println!("Sent msg from TN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     prev_msg_link = msg_link;
@@ -329,8 +329,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     wn_b.sync_state().await;
     let (msg_link, _) = tn_b.send_signed_packet(
         &prev_msg_link,
-        &Bytes::default(),
         &Bytes(compensation_tx_tn_b[0].as_bytes().to_vec()),
+        &Bytes::default(),
     ).await?;
     println!("Sent msg from TN_B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     //prev_msg_link = msg_link; */
