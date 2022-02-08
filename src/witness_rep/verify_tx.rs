@@ -37,28 +37,28 @@ pub async fn verify_tx(node_url: &str, ann_msg: String) -> Result<bool> {
     // parse the string into the TransactionMsg format
     let msg1 : TransactionMsg = serde_json::from_str(msgs[0].as_str())?;
     println!("{:?}", msg1);
-    let verified = verify_msg(msg1);
-    println!("{}", verified);
+    let verified = verify_msg(msg1)?;
+    println!("Ver: {}", verified);
 
     return Ok(false);
 }
 
-pub fn verify_msg(tx_msg: TransactionMsg) -> bool {
+pub fn verify_msg(tx_msg: TransactionMsg) -> Result<bool> {
 
     let (ArrayOfWnSignitures(wit_sigs), ArrayOfTxSignitures(tn_sigs)) = get_sigs(tx_msg);
     
     for ws in wit_sigs.iter() {
-        if verify_witness_sig(ws.clone()) == false {
-            return false;
+        if verify_witness_sig(ws.clone())? == false {
+            return Ok(false);
         }
     }
     for ts in tn_sigs.iter() {
-        if verify_tx_sig(ts.clone()) == false {
-            return false;
+        if verify_tx_sig(ts.clone())? == false {
+            return Ok(false);
         }
     }
 
-    return true;
+    return Ok(true);
 }
 
 pub fn get_sigs(tx: TransactionMsg) -> (ArrayOfWnSignitures,ArrayOfTxSignitures) {
@@ -72,7 +72,7 @@ pub fn get_sigs(tx: TransactionMsg) -> (ArrayOfWnSignitures,ArrayOfTxSignitures)
     };
 }
 
-pub fn verify_witness_sig(sig: signatures::WitnessSig) -> bool{
+pub fn verify_witness_sig(sig: signatures::WitnessSig) -> Result<bool>{
     match sig {
         signatures::WitnessSig {
             contract,
@@ -88,9 +88,11 @@ pub fn verify_witness_sig(sig: signatures::WitnessSig) -> bool{
 
             let pre_sig = serde_json::to_string(&pre_sig).unwrap();
 
-            let sig_unsigned = Ed25519::verify(&String::into_bytes(pre_sig), &signature, &signer_pubkey);
+            let signer_pubkey = MethodData::PublicKeyMultibase(signer_pubkey);
+            let decoded_pubkey = MethodData::try_decode(&signer_pubkey)?;
+            let sig_unsigned = Ed25519::verify(pre_sig.as_bytes(), &signature, &decoded_pubkey);
             if let Ok(()) = sig_unsigned {
-                return true;
+                return Ok(true);
             } else {
                 panic!("Signature verification failed")
             }
@@ -98,7 +100,7 @@ pub fn verify_witness_sig(sig: signatures::WitnessSig) -> bool{
     }
 }
 
-pub fn verify_tx_sig(sig: signatures::TransactingSig) -> bool{
+pub fn verify_tx_sig(sig: signatures::TransactingSig) -> Result<bool>{
     match sig {
         signatures::TransactingSig {
             contract,
@@ -117,9 +119,11 @@ pub fn verify_tx_sig(sig: signatures::TransactingSig) -> bool{
 
             let pre_sig = serde_json::to_string(&pre_sig).unwrap();
 
-            let sig_unsigned = Ed25519::verify(pre_sig.as_bytes(), &signature, &signer_pubkey);
+            let signer_pubkey = MethodData::PublicKeyMultibase(signer_pubkey);
+            let decoded_pubkey = MethodData::try_decode(&signer_pubkey)?;
+            let sig_unsigned = Ed25519::verify(pre_sig.as_bytes(), &signature, &decoded_pubkey);
             if let Ok(()) = sig_unsigned {
-                return true;
+                return Ok(true);
             } else {
                 panic!("Signature verification failed")
             }
@@ -131,13 +135,9 @@ pub fn testing_sigs() -> Result<bool>{
 
     let (kp, (pubk, sec)) = create_and_upload_did::gen_iota_keypair();
     let multibase_pkey = MethodData::new_multibase(kp.public());
+    let multibase_pkey = MethodData::try_decode(&multibase_pkey)?;
     println!("{:?}", multibase_pkey);
-    let mut pupk2 = String::from(" ");
-    if let MethodData::PublicKeyMultibase(mbpub) = multibase_pkey {
-        println!("here");
-        pupk2 = mbpub;
-    }
-
+    
     let contract_by_tn_a = transaction_msgs::Contract {
         contract_definition: String::from("tn_b allows tn_a to enter in front of it in the lane tn_b is in"),               
         participants: transaction_msgs::TransactingClients(
@@ -158,7 +158,7 @@ pub fn testing_sigs() -> Result<bool>{
     let rebuilt_pre_sig: signatures::WitnessPreSig = serde_json::from_str(&test)?;
     let test2 = serde_json::to_string(&rebuilt_pre_sig)?;
 
-    let verified = Ed25519::verify(test2.as_bytes(), &sig_bytes, &pubk);
+    let verified = Ed25519::verify(test2.as_bytes(), &sig_bytes, &multibase_pkey);
     if let Ok(()) = verified {
         println!("true");
     } else {
