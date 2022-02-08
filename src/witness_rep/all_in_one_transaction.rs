@@ -170,6 +170,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
         contract: contract_by_tn_a.clone(),
         timeout: DEFAULT_TIMEOUT,
     };
+    println!("IMPORTANT: {:?}", wn_a_pre_sig);
     let wn_a_pre_sig_bytes = serde_json::to_string(&wn_a_pre_sig)?;
     let wn_a_sig_bytes: [u8; 64]  = Ed25519::sign(&String::into_bytes(wn_a_pre_sig_bytes), did_kps[2].private())?;
 

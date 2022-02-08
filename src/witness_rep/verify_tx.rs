@@ -1,4 +1,7 @@
-use identity::crypto::{Ed25519, Verify};
+use identity::{
+    crypto::{Ed25519, Verify, KeyPair, Sign}
+};
+use identity::prelude::*;
 use iota_streams::{
     app::transport::tangle::{client::Client, TangleAddress},
     app_channels::api::tangle::{
@@ -79,10 +82,11 @@ pub fn verify_witness_sig(sig: signatures::WitnessSig) -> bool{
                 contract,
                 timeout,
             };
+            println!("IMPORTANT: {:?}", pre_sig);
 
             let pre_sig = serde_json::to_string(&pre_sig).unwrap();
 
-            let sig_unsigned = Ed25519::verify(pre_sig.as_bytes(), &signature, &signer_pubkey);
+            let sig_unsigned = Ed25519::verify(&String::into_bytes(pre_sig), &signature, &signer_pubkey);
             if let Ok(()) = sig_unsigned {
                 return true;
             } else {
@@ -119,4 +123,22 @@ pub fn verify_tx_sig(sig: signatures::TransactingSig) -> bool{
             }
         }
     }
+}
+
+pub fn testing_sigs() -> Result<bool>{
+
+    let kp = KeyPair::new_ed25519()?;
+
+    let test = "hey";
+    let sig_bytes: [u8; 64]  = Ed25519::sign(test.as_bytes(), kp.private())?;
+
+    let verified = Ed25519::verify(test.as_bytes(), &sig_bytes, kp.public());
+    if let Ok(()) = verified {
+        println!("true");
+    } else {
+        panic!("Signature verification failed")
+    }
+
+    return Ok(true);
+
 }
