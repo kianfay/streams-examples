@@ -81,7 +81,20 @@ pub async fn example(node_url: &str) -> Result<()> {
 
     let mut prev_msg_link = keyload_link;
     for input in &msg_inputs {
-        let (msg_link, _seq_link) = author.send_signed_packet(
+        subscriber_a.sync_state().await;
+        subscriber_b.sync_state().await;
+        let (msg_link, _seq_link) = subscriber_b.send_signed_packet(
+            &prev_msg_link,
+            &Bytes::default(),
+            &Bytes(input.as_bytes().to_vec()),
+        ).await?;
+        println!("Sent msg: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+        prev_msg_link = msg_link;
+    }
+    for input in &msg_inputs {
+        subscriber_a.sync_state().await;
+        subscriber_b.sync_state().await;
+        let (msg_link, _seq_link) = subscriber_a.send_signed_packet(
             &prev_msg_link,
             &Bytes::default(),
             &Bytes(input.as_bytes().to_vec()),
@@ -92,24 +105,14 @@ pub async fn example(node_url: &str) -> Result<()> {
 
     // -----------------------------------------------------------------------------
 
-    /* // Subscribers can now fetch these messages
-    let mut retrieved = subscriber_a.fetch_all_next_msgs().await;
+    // Subscribers can now fetch these messages
+    let mut retrieved = subscriber_a.fetch_prev_msgs(&prev_msg_link, 10).await?;
+    let cur_msg = subscriber_a.receive_msg(&prev_msg_link).await?;
+    retrieved.push(cur_msg);
     verify_messages(&msg_inputs, retrieved)?;
 
-    retrieved = subscriber_b.fetch_all_next_msgs().await;
+/*     retrieved = subscriber_b.fetch_prev_msgs().await;
     verify_messages(&msg_inputs, retrieved)?; */
-
-    // In their own separate instances generate the subscriber(s) that will be attaching to the channel
-    let mut subscriber = Subscriber::new("SubscriberA", client);
-
-    // Generate an Address object from the provided announcement link string from the Author
-    let ann_address = Address::from_str(&ann_link_string)?;
-
-    // Receive the announcement message to start listening to the channel
-    subscriber.receive_announcement(&ann_address).await?;
-
-    let retrieved = subscriber.fetch_all_next_msgs().await;
-    verify_messages(&msg_inputs, retrieved)?;
 
     Ok(())
 }

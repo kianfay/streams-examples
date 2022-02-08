@@ -9,17 +9,17 @@ async fn main() -> Result<()> {
 
 /*     println!("Starting Examples");
     println!("---------------------------------------");
-    println!("Single Publisher Examples"); 
+    println!("Single Publisher Examples");
 
     println!("\n---------------------------------------");
     println!("\nPublic - Single Branch - Single Publisher\n");
-    examples::single_branch_public::example(url).await?;
+    examples::single_branch_public::example(url).await?; */
 
     println!("\n---------------------------------------");
     println!("\nPrivate - Single Branch - Single Publisher\n");
     examples::single_branch_private::example(url).await?;
 
-    println!("\n---------------------------------------");
+/*    println!("\n---------------------------------------");
     println!("\nPublic - Single Depth - Single Publisher\n");
     examples::single_depth_public::example(url).await?;
 
@@ -38,16 +38,20 @@ async fn main() -> Result<()> {
     println!("\nPrivate - Multi Branch - Single Publisher per Branch\n");
     examples::single_pub_per_branch::example(url).await?; */
 
-    println!("\n---------------------------------------");
+/*     println!("\n---------------------------------------");
     println!("\nPrivate - Multi Branch - Multiple Publishers per Branch\n");
-    examples::multi_pub_per_branch::example(url).await?;
+    examples::multi_pub_per_branch::example(url).await?; */
+/* 
+    let annoucement_msg: String = String::from("50f2e2d30c543c95104b7c29d39a14f291d3977568e99c474271fade7780cdd90000000000000000:faab108c4804d112ba05abfa");//witness_rep::all_in_one_transaction_skel::transact(url).await?;
+    witness_rep::verify_tx::verify_tx(url, annoucement_msg).await?; */
 
 /*     println!("\n---------------------------------------");
     println!("\nTransaction simulation\n");
-    let annoucement_msg: String = String::from("50f2e2d30c543c95104b7c29d39a14f291d3977568e99c474271fade7780cdd90000000000000000:faab108c4804d112ba05abfa");//witness_rep::all_in_one_transaction_skel::transact(url).await?;
+    //let annoucement_msg: String = String::from("50f2e2d30c543c95104b7c29d39a14f291d3977568e99c474271fade7780cdd90000000000000000:faab108c4804d112ba05abfa");//witness_rep::all_in_one_transaction_skel::transact(url).await?;
+    let annoucement_msg: String = witness_rep::all_in_one_transaction_skel::transact(url).await?;
     println!("\nTransaction verification\n");
-    witness_rep::verify_tx::verify_tx(url, annoucement_msg).await?;
- */
+    witness_rep::verify_tx::verify_tx(url, annoucement_msg).await?; */
+
 
     
 

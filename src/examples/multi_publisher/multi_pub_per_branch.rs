@@ -126,7 +126,7 @@ pub async fn example(node_url: &str) -> Result<()> {
     // Into conversion. This will return a tuple containing the message links. The first is the
     // message link itself, the second is the sequencing message link.
     let (keyload_a_link, _seq_a_link) =
-        author.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into(),pks[2].into(), pks[3].into()]).await?;
+        author.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into()]).await?;
     println!(
         "\nSent Keyload for Sub A and B: {}, tangle index: {:#}",
         keyload_a_link,
@@ -143,13 +143,12 @@ pub async fn example(node_url: &str) -> Result<()> {
         _seq_b_link.unwrap()
     );
 
-    let dm: Vec<u8> = [80,81].to_vec();
     // Subscribers A and B will now send encrypted messages in an alternating chain attached to Keyload A
     let msg_inputs_a = vec![
-        "These".to_string()
+        "These",
     ];
     let msg_inputs_b = vec![
-        "These".to_string()
+        "These",
     ];
 
     let mut prev_msg_link = keyload_a_link;
@@ -158,6 +157,9 @@ pub async fn example(node_url: &str) -> Result<()> {
         // Before sending any messages, a publisher in a multi publisher channel should sync their state
         // to ensure they are up to date
         subscriber_a.sync_state().await;
+        subscriber_b.sync_state().await;
+        subscriber_c.sync_state().await;
+        subscriber_d.sync_state().await;
 
         // Sub A Sends
         let (msg_link, seq_link) = subscriber_a.send_signed_packet(
@@ -169,8 +171,11 @@ pub async fn example(node_url: &str) -> Result<()> {
         println!("Sent msg from Sub A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
         prev_msg_link = msg_link;
 
-/*         // Sub B Sends
+        // Sub B Sends
+        subscriber_a.sync_state().await;
         subscriber_b.sync_state().await;
+        subscriber_c.sync_state().await;
+        subscriber_d.sync_state().await;
         let (msg_link, seq_link) = subscriber_b.send_signed_packet(
             &prev_msg_link,
             &Bytes::default(),
@@ -178,21 +183,24 @@ pub async fn example(node_url: &str) -> Result<()> {
         ).await?;
         let seq_link = seq_link.unwrap();
         println!("Sent msg from Sub B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-        prev_msg_link = msg_link; */
+        prev_msg_link = msg_link;
     }
 
     // Subscribers C and D will now send encrypted messages in an alternating chain attached to Keyload B
     let msg_inputs_c = vec![
-        "These".to_string()
+        "These",
     ];
     let msg_inputs_d = vec![
-        "These".to_string()
+        "These",
     ];
 
     prev_msg_link = keyload_b_link;
     for i in 0..msg_inputs_c.len() {
         // Sub C Sends
+        subscriber_a.sync_state().await;
+        subscriber_b.sync_state().await;
         subscriber_c.sync_state().await;
+        subscriber_d.sync_state().await;
         let (msg_link, seq_link) = subscriber_c.send_signed_packet(
             &prev_msg_link,
             &Bytes::default(),
@@ -203,6 +211,9 @@ pub async fn example(node_url: &str) -> Result<()> {
         prev_msg_link = msg_link;
 
         // Sub D Sends
+        subscriber_a.sync_state().await;
+        subscriber_b.sync_state().await;
+        subscriber_c.sync_state().await;
         subscriber_d.sync_state().await;
         let (msg_link, seq_link) = subscriber_d.send_signed_packet(
             &prev_msg_link,
@@ -240,8 +251,6 @@ fn split_retrieved(
     // Sort messages by sender
     for _ in 0..retrieved.len() {
         let msg = retrieved.remove(0);
-        println!("whole obj:{:?}", msg);
-        println!("just body:{:?}", msg.body);
         let pk = match msg.body {
             MessageContent::SignedPacket {
                 pk,
@@ -252,13 +261,17 @@ fn split_retrieved(
         };
 
         if pk == pks[0] {
-            retrieved_msgs_a.push(msg);
+            retrieved_msgs_a.push(msg.clone());
+            println!("pushing this {:?} message to A", msg);
         } else if pk == pks[1] {
-            retrieved_msgs_b.push(msg);
+            retrieved_msgs_b.push(msg.clone());
+            println!("pushing this {:?} message to B", msg);
         } else if pk == pks[2] {
-            retrieved_msgs_c.push(msg);
+            retrieved_msgs_c.push(msg.clone());
+            println!("pushing this {:?} message to C", msg);
         } else {
-            retrieved_msgs_d.push(msg);
+            retrieved_msgs_d.push(msg.clone());
+            println!("pushing this {:?} message to D", msg);
         }
     }
 

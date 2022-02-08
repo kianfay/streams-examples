@@ -12,7 +12,7 @@ pub fn verify_messages(sent_msgs: &[String], retrieved_msgs: Vec<UnwrappedMessag
 
     print!("Retrieved messages: ");
     for i in 0..processed_msgs.len() {
-        print!("{}, ", processed_msgs[i]);
+        print!("{:?}, ", processed_msgs[i]);
         assert_eq!(processed_msgs[i], sent_msgs[i])
     }
     println!();

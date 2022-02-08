@@ -30,6 +30,9 @@ pub async fn verify_tx(node_url: &str, ann_msg: String) -> Result<bool> {
 
     // fetch and extract the messages
     let retrieved = verifier_sub.fetch_all_next_msgs().await;
+    for i in 0..retrieved.len() {
+        println!("{:?}", retrieved[i]);
+    }
     let msgs = extract_msgs::extract_msg(retrieved);
 
     // deserialise the messages into their correct types

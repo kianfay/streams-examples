@@ -210,7 +210,10 @@ pub async fn transact(node_url: &str) -> Result<String> {
     ////    STAGE 11 (CURRENT) - TN_A SENDS THE TRANSACTION ON ON_A'S CHANNEL
     //////-----------------------------------------------------------------------------
     
-    let dm: Vec<u8> = [80,81].to_vec();
+    let msg_inputs_a = vec![
+        "These",
+        "Messages",
+    ];
 
     // TN_A sends the transaction
     let mut prev_msg_link = keyload_a_link;
@@ -220,8 +223,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     wn_b.sync_state().await;
     let (msg_link, _) = tn_a.send_signed_packet(
         &prev_msg_link,
-        &Bytes(dm.clone()),
         &Bytes::default(),
+        &Bytes(msg_inputs_a[0].as_bytes().to_vec()),
     ).await?;
     println!("Sent msg from TN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     prev_msg_link = msg_link;
@@ -234,7 +237,13 @@ pub async fn transact(node_url: &str) -> Result<String> {
     ////    STAGE 14 (CURRENT) - WITNESSES UPLOAD THEIR WITNESS STATEMENTS
     //////-----------------------------------------------------------------------------
 
+    let witness_c_message = vec![
+        "true"
+    ];
 
+    let witness_d_message = vec![
+        "true"
+    ];
 
     // WN_A sends their witness statement
     tn_a.sync_state().await;
@@ -243,8 +252,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     wn_b.sync_state().await;
     let (msg_link, _) = wn_a.send_signed_packet(
         &prev_msg_link,
-        &Bytes(dm.clone()),
         &Bytes::default(),
+        &Bytes(witness_c_message[0].as_bytes().to_vec()),
     ).await?;
     println!("Sent msg from WN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     prev_msg_link = msg_link;
@@ -256,8 +265,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     wn_b.sync_state().await;
     let (msg_link, _) = wn_b.send_signed_packet(
         &prev_msg_link,
-        &Bytes(dm.clone()),
         &Bytes::default(),
+        &Bytes(witness_d_message[0].as_bytes().to_vec()),
     ).await?;
     println!("Sent msg from WN_B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     prev_msg_link = msg_link;
@@ -294,8 +303,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     wn_b.sync_state().await;
     let (msg_link, _) = tn_a.send_signed_packet(
         &prev_msg_link,
-        &Bytes(compensation_tx_tn_a[0].as_bytes().to_vec()),
         &Bytes::default(),
+        &Bytes(compensation_tx_tn_a[0].as_bytes().to_vec()),
     ).await?;
     println!("Sent msg from TN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     prev_msg_link = msg_link;
@@ -314,8 +323,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     wn_b.sync_state().await;
     let (msg_link, _) = tn_b.send_signed_packet(
         &prev_msg_link,
-        &Bytes(compensation_tx_tn_b[0].as_bytes().to_vec()),
         &Bytes::default(),
+        &Bytes(compensation_tx_tn_b[0].as_bytes().to_vec()),
     ).await?;
     println!("Sent msg from TN_B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     //prev_msg_link = msg_link;
