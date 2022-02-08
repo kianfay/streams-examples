@@ -47,12 +47,13 @@ async fn main() -> Result<()> {
 
 /*     println!("\n---------------------------------------");
     println!("\nTransaction simulation\n");
-    let annoucement_msg: String = String::from("cff6713853b98b76447a3fdebdc1339777e468b2045947d40cf2077b808b9d320000000000000000:c3876a3d82fe08af379a0745");
+    let annoucement_msg: String = String::from("c5be66b5d9ebb33306a045be89d3648374f773405f1cf213c79c5197f921ebcc0000000000000000:beb14e0dbc58c0396fd027b7");
     //let annoucement_msg: String = witness_rep::all_in_one_transaction_skel::transact(url).await?;
     println!("\nTransaction verification\n");
-    witness_rep::verify_tx::verify_tx(url, annoucement_msg).await?;
- */
-    let annoucement_msg: String = witness_rep::all_in_one_transaction_skel::transact(url).await?;
+    witness_rep::verify_tx::verify_tx(url, annoucement_msg).await?; */
+
+
+    let annoucement_msg: String = witness_rep::all_in_one_transaction::transact(url).await?;
     println!("\nTransaction verification\n");
     witness_rep::verify_tx::verify_tx(url, annoucement_msg).await?;
 

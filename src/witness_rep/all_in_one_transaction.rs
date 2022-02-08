@@ -77,7 +77,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
         .collect::<String>();
     
     // on_a creates the channel
-    let mut on_a = Author::new(seed, ChannelType::MultiBranch, client);
+    let mut on_a = Author::new(seed, ChannelType::SingleBranch, client);
     let announcement_link = on_a.send_announce().await?;
     let ann_link_string = announcement_link.to_string();
     println!(
@@ -359,11 +359,9 @@ pub async fn transact(node_url: &str) -> Result<String> {
     // branch. This will return a tuple containing the message links. The first is the
     // message link itself, the second is the sequencing message link.
     let (keyload_a_link, _seq_a_link) =
-    on_a.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into(), pks[2].into(),  pks[3].into()]).await?;
-    println!(
-        "\nSent Keyload for TN_A and witnesses: {}, tangle index: {:#}",
-        keyload_a_link,
-        _seq_a_link.unwrap()
+    on_a.send_keyload_for_everyone(&announcement_link).await?;    println!(
+        "\nSent Keyload for TN_A and witnesses: {}",
+        keyload_a_link
     );
 
     //////-----------------------------------------------------------------------------
