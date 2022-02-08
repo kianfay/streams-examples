@@ -18,8 +18,8 @@ pub fn verify_messages(sent_msgs: &[String], retrieved_msgs: Vec<UnwrappedMessag
     let processed_msgs = retrieved_msgs
         .iter()
         .map(|msg| {
-            println!("whole obj:{:?}", msg);
-            println!("just body:{:?}\n", msg.body);
+            /* println!("whole obj:{:?}", msg);
+            println!("just body:{:?}\n", msg.body); */
             let content = &msg.body;
             match content {
                 MessageContent::SignedPacket {

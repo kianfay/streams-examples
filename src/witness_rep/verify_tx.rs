@@ -29,6 +29,12 @@ pub async fn verify_tx(node_url: &str, ann_msg: String) -> Result<bool> {
     let msgs = extract_msgs::extract_msg(retrieved);
     println!("{:?}", msgs);
 
+    // parse the string into the TransactionMsg format
+    let msg1 : TransactionMsg = serde_json::from_str(msgs[0].as_str())?;
+    println!("{:?}", msg1);
+    let verified = verify_msg(msg1);
+    println!("{}", verified);
+
     return Ok(false);
 }
 

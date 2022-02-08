@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize};
 // timeout included to give participants freedom over how long to be exposed
 
 // contains the data being signed
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WitnessPreSig {
     pub contract: Contract,
     pub timeout: u32,
 }
 
 // contains the data and a signature, as well the the key to verify with
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WitnessSig {
     pub contract: Contract,
     pub timeout: u32,
@@ -20,7 +20,7 @@ pub struct WitnessSig {
     pub signature: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TransactingPreSig {
     pub contract: Contract,
     pub witnesses: WitnessClients,
@@ -28,7 +28,7 @@ pub struct TransactingPreSig {
     pub timeout: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TransactingSig {
     pub contract: Contract,
     pub witnesses: WitnessClients,

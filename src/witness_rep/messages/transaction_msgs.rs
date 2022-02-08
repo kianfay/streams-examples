@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 ////	STRUCTURES
 //////
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TransactionMsg {
     pub contract: Contract,
 	pub witnesses: WitnessClients,
@@ -15,7 +15,7 @@ pub struct TransactionMsg {
 	pub tx_client_sigs: ArrayOfTxSignitures,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Contract {
     pub contract_definition: String,               
 	pub participants: TransactingClients,          
@@ -24,9 +24,9 @@ pub struct Contract {
 }
 
 // an array of bytes representing the pubkey of the participant
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TransactingClients   (pub Vec<PublicKey>);
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WitnessClients       (pub Vec<PublicKey>);
 
 pub type PublicKey = String;
@@ -39,9 +39,9 @@ pub type CoordinateDMSFormat = (Ordinate,Ordinate);
 pub type Ordinate = (u16,u16,f32);
 
 // signitures are also simply arrays of bytes
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ArrayOfTxSignitures(pub Vec<TransactingSig>);
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ArrayOfWnSignitures(pub Vec<WitnessSig>);
 
 //////

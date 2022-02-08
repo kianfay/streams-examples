@@ -7,8 +7,8 @@ pub fn extract_msg(retrieved_msgs: Vec<UnwrappedMessage>) -> Vec<String> {
     return retrieved_msgs
             .iter()
             .map(|msg| {
-                println!("whole obj:{:?}", msg);
-                println!("just body:{:?}\n", msg.body);
+                /* println!("whole obj:{:?}", msg);
+                println!("just body:{:?}\n", msg.body); */
                 let content = &msg.body;
                 match content {
                     MessageContent::SignedPacket {

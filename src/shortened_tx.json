@@ -1,0 +1,281 @@
+{
+    "contract": {
+        "contract_definition": "tn_b allows tn_a to enter in front of it in the lane tn_b is in",
+        "participants": [
+            "z6uNk3ShRFp7Xw3c7WPLy9q631EW6Jjzdeuk9oM5KP2mo",
+            "z44GJZw6UU4prZn7jivXKcQW3wyG79EP3hJajC3K5JLD3"
+        ],
+        "time": 1643572739,
+        "location": [
+            [
+                53,
+                20,
+                27.036
+            ],
+            [
+                6,
+                15,
+                2.695
+            ]
+        ]
+    },
+    "witnesses": [
+        "z3x2esP8n2jBU9XfmsTohfLvcACrBkHo4cNQbu2p1ieLF",
+        "zBqFucXotNjKhX86TUFsepX1mBvDWUANysYDa7KXGiH6K"
+    ],
+    "wit_node_sigs": [
+        {
+            "contract": {
+                "contract_definition": "tn_b allows tn_a to enter in front of it in the lane tn_b is in",
+                "participants": [
+                    "z6uNk3ShRFp7Xw3c7WPLy9q631EW6Jjzdeuk9oM5KP2mo",
+                    "z44GJZw6UU4prZn7jivXKcQW3wyG79EP3hJajC3K5JLD3"
+                ],
+                "time": 1643572739,
+                "location": [
+                    [
+                        53,
+                        20,
+                        27.036
+                    ],
+                    [
+                        6,
+                        15,
+                        2.695
+                    ]
+                ]
+            },
+            "timeout": 120,
+            "signer_pubkey": "z3x2esP8n2jBU9XfmsTohfLvcACrBkHo4cNQbu2p1ieLF",
+            "signature": [
+                0,
+                90,
+                ...
+                186,
+                99,
+                0
+            ]
+        },
+        {
+            "contract": {
+                "contract_definition": "tn_b allows tn_a to enter in front of it in the lane tn_b is in",
+                "participants": [
+                    "z6uNk3ShRFp7Xw3c7WPLy9q631EW6Jjzdeuk9oM5KP2mo",
+                    "z44GJZw6UU4prZn7jivXKcQW3wyG79EP3hJajC3K5JLD3"
+                ],
+                "time": 1643572739,
+                "location": [
+                    [
+                        53,
+                        20,
+                        27.036
+                    ],
+                    [
+                        6,
+                        15,
+                        2.695
+                    ]
+                ]
+            },
+            "timeout": 120,
+            "signer_pubkey": "zBqFucXotNjKhX86TUFsepX1mBvDWUANysYDa7KXGiH6K",
+            "signature": [
+                13,
+                185,
+                ...
+                10
+            ]
+        }
+    ],
+    "tx_client_sigs": [
+        {
+            "contract": {
+                "contract_definition": "tn_b allows tn_a to enter in front of it in the lane tn_b is in",
+                "participants": [
+                    "z6uNk3ShRFp7Xw3c7WPLy9q631EW6Jjzdeuk9oM5KP2mo",
+                    "z44GJZw6UU4prZn7jivXKcQW3wyG79EP3hJajC3K5JLD3"
+                ],
+                "time": 1643572739,
+                "location": [
+                    [
+                        53,
+                        20,
+                        27.036
+                    ],
+                    [
+                        6,
+                        15,
+                        2.695
+                    ]
+                ]
+            },
+            "witnesses": [
+                "z3x2esP8n2jBU9XfmsTohfLvcACrBkHo4cNQbu2p1ieLF",
+                "zBqFucXotNjKhX86TUFsepX1mBvDWUANysYDa7KXGiH6K"
+            ],
+            "wit_node_sigs": [
+                {
+                    "contract": {
+                        "contract_definition": "tn_b allows tn_a to enter in front of it in the lane tn_b is in",
+                        "participants": [
+                            "z6uNk3ShRFp7Xw3c7WPLy9q631EW6Jjzdeuk9oM5KP2mo",
+                            "z44GJZw6UU4prZn7jivXKcQW3wyG79EP3hJajC3K5JLD3"
+                        ],
+                        "time": 1643572739,
+                        "location": [
+                            [
+                                53,
+                                20,
+                                27.036
+                            ],
+                            [
+                                6,
+                                15,
+                                2.695
+                            ]
+                        ]
+                    },
+                    "timeout": 120,
+                    "signer_pubkey": "z3x2esP8n2jBU9XfmsTohfLvcACrBkHo4cNQbu2p1ieLF",
+                    "signature": [
+                        0,
+                        90,
+                        ...
+                        99,
+                        0
+                    ]
+                },
+                {
+                    "contract": {
+                        "contract_definition": "tn_b allows tn_a to enter in front of it in the lane tn_b is in",
+                        "participants": [
+                            "z6uNk3ShRFp7Xw3c7WPLy9q631EW6Jjzdeuk9oM5KP2mo",
+                            "z44GJZw6UU4prZn7jivXKcQW3wyG79EP3hJajC3K5JLD3"
+                        ],
+                        "time": 1643572739,
+                        "location": [
+                            [
+                                53,
+                                20,
+                                27.036
+                            ],
+                            [
+                                6,
+                                15,
+                                2.695
+                            ]
+                        ]
+                    },
+                    "timeout": 120,
+                    "signer_pubkey": "zBqFucXotNjKhX86TUFsepX1mBvDWUANysYDa7KXGiH6K",
+                    "signature": [
+                        13,
+                        185,
+                        ...
+                        10
+                    ]
+                }
+            ],
+            "timeout": 120,
+            "signer_pubkey": "z6uNk3ShRFp7Xw3c7WPLy9q631EW6Jjzdeuk9oM5KP2mo",
+            "signature": [
+                143,
+                ...
+                13
+            ]
+        },
+        {
+            "contract": {
+                "contract_definition": "tn_b allows tn_a to enter in front of it in the lane tn_b is in",
+                "participants": [
+                    "z6uNk3ShRFp7Xw3c7WPLy9q631EW6Jjzdeuk9oM5KP2mo",
+                    "z44GJZw6UU4prZn7jivXKcQW3wyG79EP3hJajC3K5JLD3"
+                ],
+                "time": 1643572739,
+                "location": [
+                    [
+                        53,
+                        20,
+                        27.036
+                    ],
+                    [
+                        6,
+                        15,
+                        2.695
+                    ]
+                ]
+            },
+            "witnesses": [
+                "z3x2esP8n2jBU9XfmsTohfLvcACrBkHo4cNQbu2p1ieLF",
+                "zBqFucXotNjKhX86TUFsepX1mBvDWUANysYDa7KXGiH6K"
+            ],
+            "wit_node_sigs": [
+                {
+                    "contract": {
+                        "contract_definition": "tn_b allows tn_a to enter in front of it in the lane tn_b is in",
+                        "participants": [
+                            "z6uNk3ShRFp7Xw3c7WPLy9q631EW6Jjzdeuk9oM5KP2mo",
+                            "z44GJZw6UU4prZn7jivXKcQW3wyG79EP3hJajC3K5JLD3"
+                        ],
+                        "time": 1643572739,
+                        "location": [
+                            [
+                                53,
+                                20,
+                                27.036
+                            ],
+                            [
+                                6,
+                                15,
+                                2.695
+                            ]
+                        ]
+                    },
+                    "timeout": 120,
+                    "signer_pubkey": "z3x2esP8n2jBU9XfmsTohfLvcACrBkHo4cNQbu2p1ieLF",
+                    "signature": [
+                        0,
+                        ...
+                        0
+                    ]
+                },
+                {
+                    "contract": {
+                        "contract_definition": "tn_b allows tn_a to enter in front of it in the lane tn_b is in",
+                        "participants": [
+                            "z6uNk3ShRFp7Xw3c7WPLy9q631EW6Jjzdeuk9oM5KP2mo",
+                            "z44GJZw6UU4prZn7jivXKcQW3wyG79EP3hJajC3K5JLD3"
+                        ],
+                        "time": 1643572739,
+                        "location": [
+                            [
+                                53,
+                                20,
+                                27.036
+                            ],
+                            [
+                                6,
+                                15,
+                                2.695
+                            ]
+                        ]
+                    },
+                    "timeout": 120,
+                    "signer_pubkey": "zBqFucXotNjKhX86TUFsepX1mBvDWUANysYDa7KXGiH6K",
+                    "signature": [
+                        13,
+                        ...
+                        10
+                    ]
+                }
+            ],
+            "timeout": 120,
+            "signer_pubkey": "z44GJZw6UU4prZn7jivXKcQW3wyG79EP3hJajC3K5JLD3",
+            "signature": [
+                203,
+                ...
+                9
+            ]
+        }
+    ]
+}
