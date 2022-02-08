@@ -77,7 +77,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
         .collect::<String>();
     
     // on_a creates the channel
-    let mut on_a = Author::new(seed, ChannelType::MultiBranch, client);
+    let mut on_a = Author::new(seed, ChannelType::SingleBranch, client);
     let announcement_link = on_a.send_announce().await?;
     let ann_link_string = announcement_link.to_string();
     println!(
@@ -199,11 +199,10 @@ pub async fn transact(node_url: &str) -> Result<String> {
     // branch. This will return a tuple containing the message links. The first is the
     // message link itself, the second is the sequencing message link.
     let (keyload_a_link, _seq_a_link) =
-    on_a.send_keyload(&announcement_link, &vec![pks[0].into(), pks[1].into(), pks[2].into(),  pks[3].into()]).await?;
+    on_a.send_keyload_for_everyone(&announcement_link).await?;
     println!(
-        "\nSent Keyload for TN_A and witnesses: {}, tangle index: {:#}",
-        keyload_a_link,
-        _seq_a_link.unwrap()
+        "\nSent Keyload for TN_A and witnesses: {}",
+        keyload_a_link
     );
 
     //////-----------------------------------------------------------------------------
@@ -211,8 +210,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     //////-----------------------------------------------------------------------------
     
     let msg_inputs_a = vec![
-        "These",
-        "Messages",
+        "These".to_string(),
+        "Messages".to_string(),
     ];
 
     // TN_A sends the transaction
@@ -238,11 +237,11 @@ pub async fn transact(node_url: &str) -> Result<String> {
     //////-----------------------------------------------------------------------------
 
     let witness_c_message = vec![
-        "true"
+        "true".to_string(),
     ];
 
     let witness_d_message = vec![
-        "true"
+        "true".to_string(),
     ];
 
     // WN_A sends their witness statement
@@ -280,9 +279,11 @@ pub async fn transact(node_url: &str) -> Result<String> {
     let mut retrieved = on_a.fetch_all_next_msgs().await;
     println!("\nAuthor found {} messages", retrieved.len());
 
-    let mut retrieved_lists = split_retrieved(&mut retrieved, pks);
+    let mut retrieved_lists = split_retrieved(&mut retrieved, pks.clone());
     println!("\nVerifying message retrieval: Author");
-    //verify_messages(&tx_message, retrieved_lists.remove(0))?;
+    verify_messages(&msg_inputs_a, retrieved_lists.remove(0))?;
+    verify_messages(&witness_c_message, retrieved_lists.remove(0))?;
+    verify_messages(&witness_d_message, retrieved_lists.remove(0))?;
 
     //////-----------------------------------------------------------------------------
     ////    STAGE 16 (CURRENT) - RELEVANT NODES COMPENSATE THE PREDEFINED NODES TO BE COMPENSATED
@@ -329,6 +330,15 @@ pub async fn transact(node_url: &str) -> Result<String> {
     println!("Sent msg from TN_B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     //prev_msg_link = msg_link;
 
+    // We read the transaction + witness statement + compensation
+    let mut retrieved = on_a.fetch_all_next_msgs().await;
+    println!("\nAuthor found {} messages", retrieved.len());
+
+    let mut retrieved_lists = split_retrieved(&mut retrieved, pks);
+    println!("\nVerifying message retrieval: Author");
+    verify_messages(&msg_inputs_a, retrieved_lists.remove(0))?;
+    verify_messages(&witness_c_message, retrieved_lists.remove(2))?;
+
     //////-----------------------------------------------------------------------------
     ////    ------FINISHED------
     //////-----------------------------------------------------------------------------
@@ -344,6 +354,7 @@ fn split_retrieved(
     let mut retrieved_msgs_a = Vec::new();
     let mut retrieved_msgs_b = Vec::new();
     let mut retrieved_msgs_c = Vec::new();
+    let mut retrieved_msgs_d = Vec::new();
 
     // Sort messages by sender
     for _ in 0..retrieved.len() {
@@ -363,6 +374,8 @@ fn split_retrieved(
             retrieved_msgs_b.push(msg);
         } else if pk == pks[2] {
             retrieved_msgs_c.push(msg);
+        } else if pk == pks[3] {
+            retrieved_msgs_d.push(msg);
         }
     }
 
@@ -370,5 +383,6 @@ fn split_retrieved(
         retrieved_msgs_a,
         retrieved_msgs_b,
         retrieved_msgs_c,
+        retrieved_msgs_d,
     ]
 }

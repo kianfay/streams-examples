@@ -15,9 +15,9 @@ async fn main() -> Result<()> {
     println!("\nPublic - Single Branch - Single Publisher\n");
     examples::single_branch_public::example(url).await?; */
 
-    println!("\n---------------------------------------");
+/*     println!("\n---------------------------------------");
     println!("\nPrivate - Single Branch - Single Publisher\n");
-    examples::single_branch_private::example(url).await?;
+    examples::single_branch_private::example(url).await?; */
 
 /*    println!("\n---------------------------------------");
     println!("\nPublic - Single Depth - Single Publisher\n");
@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
     println!("\nTransaction verification\n");
     witness_rep::verify_tx::verify_tx(url, annoucement_msg).await?; */
 
-
+    let annoucement_msg: String = witness_rep::all_in_one_transaction_skel::transact(url).await?;
     
 
 /* 
