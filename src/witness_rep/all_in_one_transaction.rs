@@ -19,7 +19,7 @@ use iota_streams::core_edsig::signature::ed25519;
 use crate::witness_rep::messages::*;
 use crate::examples::{verify_messages, ALPH9};
 use crate::witness_rep::messages::{ 
-    setup_msgs, transaction_msgs, signatures, witness_msgs
+    setup_msgs, transaction_msgs, signatures
 };
 use crate::witness_rep::iota_did::create_and_upload_did::create_n_dids;
 use crate::witness_rep::iota_did::create_and_upload_did::Key;
@@ -498,22 +498,20 @@ pub async fn transact(node_url: &str) -> Result<String> {
     ////    STAGE 16 (CURRENT) - RELEVANT NODES COMPENSATE THE PREDEFINED NODES TO BE COMPENSATED
     //////-----------------------------------------------------------------------------
 
+    // TN_A prepares the compensation transaction 
     let payments_tn_a = vec![
         "tn_b: 0.1".to_string(),
         "wn_a: 0.01".to_string(),
         "wn_b: 0.01".to_string()
     ];
     
-    let compensation_msg = message::Message::CompensationMsg {
+    let compensation_msg_tn_a = message::Message::CompensationMsg {
         payments: payments_tn_a
     };
+    let compensation_msg_str_tn_a = serde_json::to_string(&compensation_msg_tn_a)?;
 
     let compensation_tx_tn_a = vec![
-        "{
-            \'pay_to_tn_b\': 0.1,
-            \'pay_to_wn_a\': 0.01,
-            \'pay_to_wn_b\': 0.01,
-        }"
+        compensation_msg_str_tn_a
     ];
 
     // TN_A sends the compensation transaction
@@ -529,11 +527,19 @@ pub async fn transact(node_url: &str) -> Result<String> {
     println!("Sent msg from TN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
     prev_msg_link = msg_link;
 
+    let payments_tn_b = vec![
+        "wn_a: 0.01".to_string(),
+        "wn_b: 0.01".to_string()
+    ];
+    
+    // TN_B prepares the compensation transaction 
+    let compensation_msg_tn_b = message::Message::CompensationMsg {
+        payments: payments_tn_b
+    };
+    let compensation_msg_str_tn_b = serde_json::to_string(&compensation_msg_tn_b)?;
+
     let compensation_tx_tn_b = vec![
-        "{
-            \'pay_to_wn_a\': 0.01,
-            \'pay_to_wn_b\': 0.01,
-        }"
+        compensation_msg_str_tn_b
     ];
 
     // TN_B sends the compensation transaction

@@ -108,6 +108,16 @@ pub fn verify_msg( (tx_msg,channel_pk) : (message::Message, &String), mut valid_
                 return Ok((true, None));
             }
         },
+        message::Message::CompensationMsg {
+            payments
+        } => {
+            //println!("Inside here");
+            let wrapped_channel_pk = PublickeyOwner::TransactingNode(channel_pk.clone());
+            //println!("{:?}", wrapped_channel_pk);
+            if valid_pks.contains(&wrapped_channel_pk) {
+                return Ok((true, None));
+            }
+        },
         _ => return Ok((false, None))
     }
     //println!("Unfort here");

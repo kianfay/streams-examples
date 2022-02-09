@@ -18,7 +18,7 @@ use std::{thread, time::Duration};
 
 use crate::examples::{verify_messages, ALPH9};
 use crate::witness_rep::messages::{ 
-    setup_msgs, transaction_msgs, signatures, witness_msgs
+    setup_msgs, transaction_msgs, signatures
 };
 use crate::witness_rep::iota_did::create_and_upload_did::create_n_dids;
 use crate::witness_rep::iota_did::create_and_upload_did::Key;
