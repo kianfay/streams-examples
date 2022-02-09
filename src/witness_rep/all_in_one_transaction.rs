@@ -16,6 +16,7 @@ use rand::Rng;
 use std::{thread, time::Duration};
 use iota_streams::core_edsig::signature::ed25519;
 
+use crate::witness_rep::messages::*;
 use crate::examples::{verify_messages, ALPH9};
 use crate::witness_rep::messages::{ 
     setup_msgs, transaction_msgs, signatures, witness_msgs
@@ -61,6 +62,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     let mut wn_a = Subscriber::new("Witness Node A", client.clone());
     let mut wn_b = Subscriber::new("Witness Node B", client.clone());
     
+    // channel public keys as multibase, needed in signitures to link the did_pubkey to the publisher pubkey
+    // so that a signiture is only necessary for the TransactionMessage
     let pks_as_multibase;
     if let MethodData::PublicKeyMultibase(multibase_pub_tn_a) = MethodData::new_multibase(tn_a.get_public_key()){
         if let MethodData::PublicKeyMultibase(multibase_pub_tn_b) = MethodData::new_multibase(tn_b.get_public_key()){
@@ -299,7 +302,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
     };
 
     // TN_A, having received these signatures, builds the final transaction
-    let transaction_msg = transaction_msgs::TransactionMsg {
+    let transaction_msg = message::Message::TransactionMsg {
         contract: contract_by_tn_a.clone(),
         witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
         wit_node_sigs: transaction_msgs::ArrayOfWnSignitures(
@@ -433,7 +436,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
     //////-----------------------------------------------------------------------------
 
     // WN_A's prepares their statement
-    let wn_a_statement = witness_msgs::WitnessStatement {
+    let wn_a_statement = message::Message::WitnessStatement {
         outcome: true
     };
     let wn_a_statement_string = serde_json::to_string(&wn_a_statement)?;
@@ -443,7 +446,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
     ];
 
     // WN_B's prepares their statement
-    let wn_b_statement = witness_msgs::WitnessStatement {
+    let wn_b_statement = message::Message::WitnessStatement {
         outcome: true
     };
     let wn_b_statement_string = serde_json::to_string(&wn_b_statement)?;
@@ -494,6 +497,16 @@ pub async fn transact(node_url: &str) -> Result<String> {
     //////-----------------------------------------------------------------------------
     ////    STAGE 16 (CURRENT) - RELEVANT NODES COMPENSATE THE PREDEFINED NODES TO BE COMPENSATED
     //////-----------------------------------------------------------------------------
+
+    let payments_tn_a = vec![
+        "tn_b: 0.1".to_string(),
+        "wn_a: 0.01".to_string(),
+        "wn_b: 0.01".to_string()
+    ];
+    
+    let compensation_msg = message::Message::CompensationMsg {
+        payments: payments_tn_a
+    };
 
     let compensation_tx_tn_a = vec![
         "{

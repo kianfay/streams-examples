@@ -24,6 +24,7 @@ pub fn extract_msg(retrieved_msgs: Vec<UnwrappedMessage>) -> Vec<(String, String
                         masked_payload: _,
                     } => {
                         let pay = String::from_utf8(public_payload.0.to_vec()).unwrap();
+                        println!("{}", pay);
                         let pubk = MethodData::new_multibase(pk);
                         if let MethodData::PublicKeyMultibase(mbpub) = pubk {
                             return (pay, mbpub);
