@@ -22,6 +22,12 @@ use identity::{
 };
 use core::str::FromStr;
 
+#[derive(Clone,PartialEq,Debug)]
+pub enum PublickeyOwner {
+    TransactingNode(String),
+    Witness(String)
+}
+
 pub async fn verify_txs(node_url: &str, ann_msg: String) -> Result<bool> {
     
     // build another client to read the tangle with
@@ -62,12 +68,6 @@ pub async fn verify_txs(node_url: &str, ann_msg: String) -> Result<bool> {
     }
 
     return Ok(true);
-}
-
-#[derive(Clone,PartialEq,Debug)]
-pub enum PublickeyOwner {
-    TransactingNode(String),
-    Witness(String)
 }
 
 // Accepts a tuple of a message content and the sender's channel public key.
