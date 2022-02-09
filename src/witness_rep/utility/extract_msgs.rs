@@ -2,8 +2,7 @@ use iota_streams::app_channels::api::tangle::{
     MessageContent, UnwrappedMessage
 };
 use identity::{
-    did::MethodData,
-    crypto::{KeyPair, Ed25519, Sign}
+    did::MethodData
 };
 
 // Ectracts all message payloads and pubkeys

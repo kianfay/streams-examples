@@ -1,7 +1,7 @@
 use identity::{
     iota::{ClientBuilder, DIDMessageEncoding, ExplorerUrl, Network, Client, ClientMap, Receipt, IotaDocument},
     account::{Result},
-    crypto::{KeyPair,PrivateKey,PublicKey,KeyType},
+    crypto::KeyPair,
     core::Result as Res
 };
 
@@ -15,7 +15,7 @@ pub type Key = [u8; 32];
 // in a practical setting, we would return the url and need to fetch it from the tangle
 pub async fn create_n_dids(n: u16) -> Result<Vec<(IotaDocument,(KeyPair,(Key,Key)),Receipt)>> {
     let mut did_array = Vec::new();
-    for i in 0..n {
+    for _ in 0..n {
         let did_info = create_and_upload_did().await?;
         did_array.push(did_info);
     }
@@ -28,7 +28,7 @@ async fn create_and_upload_did() -> Result<(IotaDocument,(KeyPair,(Key,Key)),Rec
     let network = Network::try_from_name(network_name)?;
 
     // hardcoded as this fn will only ever be used on the private tangle
-    let explorer = ExplorerUrl::parse("http://127.0.0.1:8082")?;
+    //let explorer = ExplorerUrl::parse("http://127.0.0.1:8082")?;
     let private_node_url = "http://127.0.0.1:14265";
     let encoding = DIDMessageEncoding::JsonBrotli;
     let client_builder = ClientBuilder::new()
@@ -87,7 +87,7 @@ pub fn gen_iota_keypair() -> (KeyPair,(Key,Key)) {
 ///
 /// Note that the private key is a 32-byte seed in compliance with [RFC 8032](https://datatracker.ietf.org/doc/html/rfc8032#section-3.2).
 /// Other implementations often use another format. See [this blog post](https://blog.mozilla.org/warner/2011/11/29/ed25519-keys/) for further explanation.
-pub fn generate_ed25519_keypair() -> Res<((Key,Key))> {
+pub fn generate_ed25519_keypair() -> Res<(Key,Key)> {
     let secret_res = ed25519::SecretKey::generate();
     if let Ok(secret) = secret_res {
         let public: ed25519::PublicKey = secret.public_key();

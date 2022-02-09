@@ -1,5 +1,7 @@
+use crate::examples::{verify_messages, ALPH9};
+
 use iota_streams::{
-    app::transport::tangle::{client::Client, TangleAddress},
+    app::transport::tangle::client::Client,
     app_channels::api::tangle::{
         Address, Author, Bytes, ChannelType, MessageContent, Subscriber,
         UnwrappedMessage, PublicKey
@@ -8,20 +10,7 @@ use iota_streams::{
     app::message::HasLink
 };
 use core::str::FromStr;
-//iota_streams::iota_streams_app::transport::tangle::TangleAddress
-use identity::{
-    did::MethodData,
-    crypto::{KeyPair, Ed25519, Sign}
-};
 use rand::Rng;
-use std::{thread, time::Duration};
-
-use crate::examples::{verify_messages, ALPH9};
-use crate::witness_rep::messages::{ 
-    setup_msgs, transaction_msgs, signatures
-};
-use crate::witness_rep::iota_did::create_and_upload_did::create_n_dids;
-use crate::witness_rep::iota_did::create_and_upload_did::Key;
 /**
  * Six nodes interaction:
  *  - Transacting node A (TN_A)
@@ -268,7 +257,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
         &Bytes::default(),
     ).await?;
     println!("Sent msg from WN_B: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
-    prev_msg_link = msg_link;
+    //prev_msg_link = msg_link;
 
     //////-----------------------------------------------------------------------------
     ////    STAGE 15 (CURRENT) - ALL PARTIES, BOTH INVOLVED AND NOT INVOLVED, CAN NOW SCAN THE TRANSACTION

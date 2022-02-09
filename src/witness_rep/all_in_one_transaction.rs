@@ -1,5 +1,16 @@
+use crate::witness_rep::{
+    iota_did::create_and_upload_did::{
+        create_n_dids, Key
+    },
+    messages::{
+        message, setup_msgs,
+        signatures, transaction_msgs
+    },
+};
+use crate::examples::{verify_messages, ALPH9};
+
 use iota_streams::{
-    app::transport::tangle::{client::Client, TangleAddress},
+    app::transport::tangle::client::Client,
     app_channels::api::tangle::{
         Address, Author, Bytes, ChannelType, MessageContent, Subscriber,
         UnwrappedMessage, PublicKey
@@ -7,22 +18,12 @@ use iota_streams::{
     core::{println, Result},
     app::message::HasLink
 };
-//iota_streams::iota_streams_app::transport::tangle::TangleAddress
 use identity::{
     did::MethodData,
     crypto::{KeyPair, Ed25519, Sign}
 };
 use rand::Rng;
-use std::{thread, time::Duration};
-use iota_streams::core_edsig::signature::ed25519;
 
-use crate::witness_rep::messages::*;
-use crate::examples::{verify_messages, ALPH9};
-use crate::witness_rep::messages::{ 
-    setup_msgs, transaction_msgs, signatures
-};
-use crate::witness_rep::iota_did::create_and_upload_did::create_n_dids;
-use crate::witness_rep::iota_did::create_and_upload_did::Key;
 
 /**
  * Six nodes interaction:
@@ -88,8 +89,6 @@ pub async fn transact(node_url: &str) -> Result<String> {
         panic!("Failed to extract multibase pubkey")
     }
 
-
-
     //////-----------------------------------------------------------------------------
     ////    PREREQUISITES 2 (CURRENT) - ON_A ALREADY HAS A CHANNEL SET UP TO BE USED BY CLIENTS FOR THIS PURPOSE
     ////                                (CLIENTS MEANING THE ORGANIZATION'S CLIENTS, AS OPOSSED TO TANGLE CLIENT)
@@ -106,7 +105,13 @@ pub async fn transact(node_url: &str) -> Result<String> {
         })
         .collect::<String>();
     
-    // on_a creates the channel
+    // ON_A creates the channel.
+    // Ideally this would be a multi-branch, except that multi-branch + multi-pub is still
+    // a work in progress and not all messages are readable, so for now we assume that ON_A
+    // sends a keyload for his multi-branch, thus making it so that all event branches are
+    // connected to the root started by ON_A, providing additional structure by having events
+    // and users together in branches, and organizations hosting the events. The organizations
+    // could be owned by a user to bypass having to have a orgnanization approve of the event.
     let mut on_a = Author::new(seed, ChannelType::SingleBranch, client);
     let announcement_link = on_a.send_announce().await?;
     let ann_link_string = announcement_link.to_string();
@@ -205,6 +210,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
     let wn_a_pre_sig_bytes = serde_json::to_string(&wn_a_pre_sig)?;
     let wn_a_sig_bytes: [u8; 64]  = Ed25519::sign(&String::into_bytes(wn_a_pre_sig_bytes), did_kps[2].private())?;
 
+    // WN_A packs the signature bytes in with the signiture message
     let wn_a_sig = signatures::WitnessSig {
         contract: contract_by_tn_a.clone(),
         signer_channel_pubkey: pks_as_multibase[2].clone(),
@@ -222,6 +228,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
     let wn_b_pre_sig_bytes = serde_json::to_string(&wn_b_pre_sig)?;
     let wn_b_sig_bytes: [u8; 64]  = Ed25519::sign(&String::into_bytes(wn_b_pre_sig_bytes), did_kps[3].private())?;
 
+    // WN_B packs the signature bytes in with the signiture message
     let wn_b_sig = signatures::WitnessSig {
         contract: contract_by_tn_a.clone(),
         signer_channel_pubkey: pks_as_multibase[3].clone(),
@@ -252,7 +259,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     let tn_a_tx_msg_pre_sig_bytes = serde_json::to_string(&tn_a_tx_msg_pre_sig)?;
     let tn_a_tx_msg_sig: [u8; 64]  = Ed25519::sign(&String::into_bytes(tn_a_tx_msg_pre_sig_bytes), did_kps[0].private())?;
 
-    let tn_a_tx_msg_pre_sig = signatures::TransactingSig {
+    // TN_A packs the signature bytes in with the signiture message
+    let tn_a_sig = signatures::TransactingSig {
         contract: contract_by_tn_a.clone(),
         signer_channel_pubkey: pks_as_multibase[0].clone(),
         witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
@@ -285,7 +293,8 @@ pub async fn transact(node_url: &str) -> Result<String> {
     let tn_b_tx_msg_pre_sig_bytes = serde_json::to_string(&tn_b_tx_msg_pre_sig)?;
     let tn_b_tx_msg_sig: [u8; 64]  = Ed25519::sign(&String::into_bytes(tn_b_tx_msg_pre_sig_bytes), did_kps[1].private())?;
 
-    let tn_b_tx_msg_pre_sig = signatures::TransactingSig {
+    // TN_B packs the signature bytes in with the signiture message
+    let tn_b_sig = signatures::TransactingSig {
         contract: contract_by_tn_a.clone(),
         signer_channel_pubkey: pks_as_multibase[1].clone(),
         witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
@@ -307,15 +316,15 @@ pub async fn transact(node_url: &str) -> Result<String> {
         witnesses: transaction_msgs::WitnessClients(Vec::from([did_pubkeys[2].clone(), did_pubkeys[3].clone()])),
         wit_node_sigs: transaction_msgs::ArrayOfWnSignitures(
             [
-                wn_a_sig.clone(),
-                wn_b_sig.clone()
+                wn_a_sig,
+                wn_b_sig
             ]
             .to_vec()
         ),
         tx_client_sigs: transaction_msgs::ArrayOfTxSignitures(
             [
-                tn_a_tx_msg_pre_sig,
-                tn_b_tx_msg_pre_sig
+                tn_a_sig,
+                tn_b_sig
             ]
             .to_vec()
         ),

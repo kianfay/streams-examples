@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use crate::witness_rep::messages::transaction_msgs;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Message{

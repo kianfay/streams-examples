@@ -1,25 +1,26 @@
+use crate::witness_rep::{
+    utility::extract_msgs,
+    messages::{
+        message,
+        signatures,
+        transaction_msgs::{
+            TransactionMsg, ArrayOfTxSignitures, ArrayOfWnSignitures
+        }
+    }
+};
+
+use iota_streams::{
+    app::transport::tangle::{client::Client, },
+    app_channels::api::tangle::{
+        Address, Subscriber
+    },
+    core::{println, Result},
+};
 use identity::{
-    crypto::{Ed25519, Verify, KeyPair, Sign},
+    crypto::{Ed25519, Verify},
     did::MethodData,
 };
-use iota_streams::{
-    app::transport::tangle::{client::Client, TangleAddress},
-    app_channels::api::tangle::{
-        Address, Author, Bytes, ChannelType, MessageContent, Subscriber,
-        UnwrappedMessage, PublicKey
-    },
-    core::{println, Result, Errors::BadTransactionTag},
-};
-use crate::witness_rep::utility::extract_msgs;
-
 use core::str::FromStr;
-
-use crate::witness_rep::messages::*;
-use crate::witness_rep::iota_did::*;
-use crate::witness_rep::messages::signatures;
-use crate::witness_rep::messages::transaction_msgs::{
-    TransactionMsg, ArrayOfTxSignitures, ArrayOfWnSignitures 
-};
 
 pub async fn verify_txs(node_url: &str, ann_msg: String) -> Result<bool> {
     
@@ -99,7 +100,7 @@ pub fn verify_msg( (tx_msg,channel_pk) : (message::Message, &String), mut valid_
             return Ok((true, Some(valid_pks)))
         },
         message::Message::WitnessStatement {
-            outcome,
+            outcome: _,
         } => {
             //println!("Inside here");
             let wrapped_channel_pk = PublickeyOwner::Witness(channel_pk.clone());
@@ -109,7 +110,7 @@ pub fn verify_msg( (tx_msg,channel_pk) : (message::Message, &String), mut valid_
             }
         },
         message::Message::CompensationMsg {
-            payments
+            payments: _
         } => {
             //println!("Inside here");
             let wrapped_channel_pk = PublickeyOwner::TransactingNode(channel_pk.clone());
@@ -117,8 +118,7 @@ pub fn verify_msg( (tx_msg,channel_pk) : (message::Message, &String), mut valid_
             if valid_pks.contains(&wrapped_channel_pk) {
                 return Ok((true, None));
             }
-        },
-        _ => return Ok((false, None))
+        }
     }
     //println!("Unfort here");
     return Ok((false, None));

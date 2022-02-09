@@ -1,11 +1,6 @@
 use crate::witness_rep::messages::signatures::{WitnessSig, TransactingSig};
 
-
 use serde::{Deserialize, Serialize};
-
-//////
-////	STRUCTURES
-//////
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TransactionMsg {
@@ -43,8 +38,3 @@ pub type Ordinate = (u16,u16,f32);
 pub struct ArrayOfTxSignitures(pub Vec<TransactingSig>);
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ArrayOfWnSignitures(pub Vec<WitnessSig>);
-
-//////
-////	UTILITY FUNCTIONS
-//////
-
