@@ -16,13 +16,13 @@ use identity::{
 pub fn generate_witness_sig(
     contract: transaction_msgs::Contract,
     channel_pk_as_multibase: String,
-    did_pk_keypair: KeyPair,
+    did_keypair: KeyPair,
     timeout: u32
 ) -> Result<signatures::WitnessSig> {
 
 
     let did_pk_as_multibase: String;
-    let multibase_pub = MethodData::new_multibase(did_pk_keypair.public());
+    let multibase_pub = MethodData::new_multibase(did_keypair.public());
     if let MethodData::PublicKeyMultibase(mbpub) = multibase_pub {
         did_pk_as_multibase = mbpub;
     }
@@ -38,7 +38,7 @@ pub fn generate_witness_sig(
     };
     println!("IMPORTANT: {:?}", wn_pre_sig);
     let wn_pre_sig_bytes = serde_json::to_string(&wn_pre_sig)?;
-    let wn_sig_bytes: [u8; 64]  = Ed25519::sign(&String::into_bytes(wn_pre_sig_bytes), did_pk_keypair.private())?;
+    let wn_sig_bytes: [u8; 64]  = Ed25519::sign(&String::into_bytes(wn_pre_sig_bytes), did_keypair.private())?;
 
     // WN packs the signature bytes in with the signiture message
     let wn_sig = signatures::WitnessSig {
@@ -55,14 +55,14 @@ pub fn generate_witness_sig(
 pub fn generate_transacting_sig(
     contract: transaction_msgs::Contract,
     channel_pk_as_multibase: String,
-    did_pk_keypair: KeyPair,
+    did_keypair: KeyPair,
     witnesses: transaction_msgs::WitnessClients,
     witness_sigs: transaction_msgs::ArrayOfWnSignitures,
     timeout: u32
 ) -> Result<signatures::TransactingSig> {
 
     let did_pk_as_multibase: String;
-    let multibase_pub = MethodData::new_multibase(did_pk_keypair.public());
+    let multibase_pub = MethodData::new_multibase(did_keypair.public());
     if let MethodData::PublicKeyMultibase(mbpub) = multibase_pub {
         did_pk_as_multibase = mbpub;
     }
@@ -79,7 +79,7 @@ pub fn generate_transacting_sig(
         timeout: timeout
     };
     let tn_a_tx_msg_pre_sig_bytes = serde_json::to_string(&tn_a_tx_msg_pre_sig)?;
-    let tn_a_tx_msg_sig: [u8; 64]  = Ed25519::sign(&String::into_bytes(tn_a_tx_msg_pre_sig_bytes), did_pk_keypair.private())?;
+    let tn_a_tx_msg_sig: [u8; 64]  = Ed25519::sign(&String::into_bytes(tn_a_tx_msg_pre_sig_bytes), did_keypair.private())?;
 
     // TN_A packs the signature bytes in with the signiture message
     let tn_a_sig = signatures::TransactingSig {
