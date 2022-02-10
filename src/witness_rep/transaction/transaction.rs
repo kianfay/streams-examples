@@ -70,6 +70,13 @@ pub async fn transact(
         witness_clients[i].receive_announcement(&ann_address).await?;
     }
 
+    let (keyload_a_link, _seq_a_link) =
+    organization_client.send_keyload_for_everyone(&announcement_link).await?;
+    println!(
+        "\nSent Keyload for TN_A and witnesses: {}",
+        keyload_a_link
+    );
+
     //--------------------------------------------------------------
     // WITNESSES GENERATE SIGS
     //--------------------------------------------------------------
@@ -155,8 +162,10 @@ pub async fn transact(
 
     // TN_A sends the transaction
     let mut prev_msg_link = announcement_link;
-    sync_all(transacting_clients).await?;
-    sync_all(witness_clients).await?;
+    transacting_clients[0].sync_state().await;
+    transacting_clients[1].sync_state().await;
+    witness_clients[0].sync_state().await;
+    witness_clients[1].sync_state().await;
     let (msg_link, _) = transacting_clients[0].send_signed_packet(
         &prev_msg_link,
         &Bytes(tx_message[0].as_bytes().to_vec()),
@@ -189,8 +198,15 @@ pub async fn transact(
         ];
 
         // WN sends their witness statement
-        sync_all(transacting_clients).await?;
-        sync_all(witness_clients).await?;
+        println!("here");
+        transacting_clients[0].sync_state().await;
+        println!("here");
+        transacting_clients[1].sync_state().await;
+        println!("here");
+        witness_clients[0].sync_state().await;
+        println!("here");
+        witness_clients[1].sync_state().await;
+        println!("here");
         let (msg_link, _) = witness_clients[i].send_signed_packet(
             &prev_msg_link,
             &Bytes(witness_message[0].as_bytes().to_vec()),
@@ -221,6 +237,192 @@ pub async fn transact(
             payments: payments_tn_a
         };
         let compensation_msg_str = serde_json::to_string(&compensation_msg)?;
+
+        let compensation_tx = vec![
+            compensation_msg_str
+        ];
+
+        // TN sends the compensation transaction
+        sync_all(transacting_clients).await?;
+        sync_all(witness_clients).await?;
+        let (msg_link, _) = transacting_clients[i].send_signed_packet(
+            &prev_msg_link,
+            &Bytes(compensation_tx[0].as_bytes().to_vec()),
+            &Bytes::default(),
+        ).await?;
+        println!("Sent msg from TN_{}: {}, tangle index: {:#}", i, msg_link, msg_link.to_msg_index());
+        prev_msg_link = msg_link;
+    }
+    
+    return Ok(());
+}
+
+
+
+pub async fn transact_skel(node_url: &str) -> Result<()> {
+    const DEFAULT_TIMEOUT : u32 = 60*2; // 2 mins
+
+    let client = Client::new_from_url(node_url);
+
+    let mut tn_a = Subscriber::new("Transacting Node A", client.clone());
+    let mut tn_b = Subscriber::new("Transacting Node B", client.clone());
+    let mut wn_a = Subscriber::new("Witness Node A", client.clone());
+    let mut wn_b = Subscriber::new("Witness Node B", client.clone());
+
+    let transacting_clients: &mut Vec<&mut Subscriber<Client>> = &mut vec![&mut tn_a,&mut  tn_b];
+    let witness_clients:&mut Vec<&mut Subscriber<Client>> = &mut vec![&mut wn_a,&mut  wn_b];  
+    
+    // generate channel author
+    let seed: &str = &(0..81)
+        .map(|_| {
+            ALPH9
+                .chars()
+                .nth(rand::thread_rng().gen_range(0, 27))
+                .unwrap()
+        })
+        .collect::<String>();
+    
+    let mut organization_client = Author::new(seed, ChannelType::SingleBranch, client.clone());
+
+    //--------------------------------------------------------------
+    //--------------------------------------------------------------
+    // ORGANIZATION SENDS ANOUNCEMENT AND SUBS PROCESS IT AND SUBSCRIBE
+    // (IMITATING A KEYLOAD IN A MULTI-BRANCH/MULTI-PUB CHANNEL)
+    //--------------------------------------------------------------
+    let announcement_link = organization_client.send_announce().await?;
+    let ann_link_string = announcement_link.to_string();
+    println!(
+        "Announcement Link: {}\nTangle Index: {:#}\n",
+        ann_link_string, announcement_link.to_msg_index()
+    );
+
+    // participants process the channel announcement and subscribe
+    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes())?;
+    for i in 0..transacting_clients.len() {
+        transacting_clients[i].receive_announcement(&ann_address).await?;
+            
+        // tn sends subscription message; these are the subscription links that
+        // should be provided to the Author to complete subscription
+        let subscribe_msg = transacting_clients[i].send_subscribe(&ann_address).await?;
+        let sub_msg_str = subscribe_msg.to_string();
+        println!(
+            "Subscription msgs:\n\tSubscriber TN_A: {}\n\tTangle Index: {:#}\n",
+            sub_msg_str, subscribe_msg.to_msg_index()
+        );
+
+        let sub_address = Address::try_from_bytes(&subscribe_msg.to_bytes())?;
+        organization_client.receive_subscribe(&sub_address).await?;
+    }
+    for i in 0..witness_clients.len() {
+        witness_clients[i].receive_announcement(&ann_address).await?;
+
+        // wn sends subscription message; these are the subscription links that
+        // should be provided to the Author to complete subscription
+        let subscribe_msg = witness_clients[i].send_subscribe(&ann_address).await?;
+        let sub_msg_str = subscribe_msg.to_string();
+        println!(
+            "Subscription msgs:\n\tSubscriber TN_{}: {}\n\tTangle Index: {:#}\n",
+            i, sub_msg_str, subscribe_msg.to_msg_index()
+        );
+        
+        let sub_address = Address::try_from_bytes(&subscribe_msg.to_bytes())?;
+        organization_client.receive_subscribe(&sub_address).await?;
+    }
+
+    let (keyload_a_link, _seq_a_link) =
+    organization_client.send_keyload_for_everyone(&announcement_link).await?;
+    println!(
+        "\nSent Keyload for TN_A and witnesses: {}",
+        keyload_a_link
+    );
+
+    //--------------------------------------------------------------
+    // WITNESSES GENERATE SIGS
+    //--------------------------------------------------------------
+
+
+    //--------------------------------------------------------------
+    // TRANSACTING NODES GENERATE SIGS
+    //--------------------------------------------------------------
+
+    //--------------------------------------------------------------
+    // INITIATING TN, HAVING REVEIVED THE SIGNATURES, 
+    // BUILD FINAL TRANSACTION (TN = TRANSACTING NODE)
+    //--------------------------------------------------------------
+
+    
+    //--------------------------------------------------------------
+    // INITIATING TN SENDS THE TRANSACTION MESSAGE
+    //--------------------------------------------------------------
+
+    // serialise the tx
+    let tx_msg_str = String::from("heyy"); 
+    let tx_message = vec![
+        tx_msg_str
+    ];
+
+    // TN_A sends the transaction
+    let mut prev_msg_link = announcement_link;
+    transacting_clients[0].sync_state().await;
+    transacting_clients[1].sync_state().await;
+    witness_clients[0].sync_state().await;
+    witness_clients[1].sync_state().await;
+    let (msg_link, _) = transacting_clients[0].send_signed_packet(
+        &prev_msg_link,
+        &Bytes(tx_message[0].as_bytes().to_vec()),
+        &Bytes::default(),
+    ).await?;
+    println!("Sent msg from TN_A: {}, tangle index: {:#}", msg_link, msg_link.to_msg_index());
+    prev_msg_link = msg_link;
+
+    //--------------------------------------------------------------
+    // THE EVENT IN QUESTION ON THE CONTRACT PLAYS OUT
+    // (WE GENERATE THE OUTCOME AS PART OF THE SIMULATION)
+    //--------------------------------------------------------------
+
+    // TODO
+
+    //--------------------------------------------------------------
+    // WITNESSES SEND THEIR STATMENTS
+    //--------------------------------------------------------------
+
+    for i in 0..witness_clients.len(){
+
+        let wn_statement_string = String::from("heyy"); 
+
+        let witness_message = vec![
+            wn_statement_string
+        ];
+
+        // WN sends their witness statement
+        println!("here");
+        transacting_clients[0].sync_state().await;
+        println!("here");
+        transacting_clients[1].sync_state().await;
+        println!("here");
+        witness_clients[0].sync_state().await;
+        println!("here");
+        witness_clients[1].sync_state().await;
+        println!("here");
+        let (msg_link, _) = witness_clients[i].send_signed_packet(
+            &prev_msg_link,
+            &Bytes(witness_message[0].as_bytes().to_vec()),
+            &Bytes::default(),
+        ).await?;
+        println!("Sent msg from WN_{}: {}, tangle index: {:#}", i, msg_link, msg_link.to_msg_index());
+        prev_msg_link = msg_link;
+    }
+
+    //--------------------------------------------------------------
+    // THE PARTICIPANTS READ THE STATEMENTS AND DECIDE TO COMPENSATE
+    // OR NOT (NOT WOULD IN PRINCIPAL BE A DISHONEST CHOICE)
+    //--------------------------------------------------------------
+
+    // TODO - add read and choice
+
+    for i in 0..transacting_clients.len(){
+
+        let compensation_msg_str = String::from("heyy"); 
 
         let compensation_tx = vec![
             compensation_msg_str
