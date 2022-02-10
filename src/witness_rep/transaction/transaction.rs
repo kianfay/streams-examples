@@ -38,6 +38,101 @@ pub struct OrganizationIdentity {
     pub did_keypair: KeyPair
 }
 
+pub async fn transact2<'a>(
+    contract: transaction_msgs::Contract,
+    transacting_clients: &mut Vec<&mut Subscriber<Client>>,
+    witness_client: &mut Vec<&mut Subscriber<Client>>,
+    witness_did_kp: Vec<KeyPair>,
+    organization_client: &mut Author<Client>
+) -> Result<()> {
+    const DEFAULT_TIMEOUT : u32 = 60*2; // 2 mins
+
+    //--------------------------------------------------------------
+    //--------------------------------------------------------------
+    // ORGANIZATION SENDS ANOUNCEMENT AND SUBS PROCESS IT
+    // (IMITATING A KEYLOAD IN A MULTI-BRANCH/MULTI-PUB CHANNEL)
+    //--------------------------------------------------------------
+    let announcement_link = organization_client.send_announce().await?;
+    let ann_link_string = announcement_link.to_string();
+    println!(
+        "Announcement Link: {}\nTangle Index: {:#}\n",
+        ann_link_string, announcement_link.to_msg_index()
+    );
+
+    // participants process the channel announcement
+    let ann_address = Address::try_from_bytes(&announcement_link.to_bytes())?;
+    for i in 0..transacting_clients.len() {
+        transacting_clients[i].receive_announcement(&ann_address).await?;
+    }
+    for i in 0..witness_client.len() {
+        witness_client[i].receive_announcement(&ann_address).await?;
+    }
+
+    //--------------------------------------------------------------
+    // WITNESSES GENERATE SIGS
+    //--------------------------------------------------------------
+
+    let mut witness_sigs: Vec<signatures::WitnessSig> = Vec::new();
+    for i in 0..witness_client.len() {
+        let multibase_pub = MethodData::new_multibase(witness_client[i].get_public_key());
+        let channel_pk_as_multibase: String;
+        if let MethodData::PublicKeyMultibase(mbpub) = multibase_pub {
+            channel_pk_as_multibase = mbpub;
+        }
+        else {
+            panic!("Could not encode public key as multibase")
+        }
+
+        let sig = generate_sigs::generate_witness_sig(contract.clone(),
+            channel_pk_as_multibase,
+            witness_did_kp[i].clone(),
+            DEFAULT_TIMEOUT
+        )?;
+        witness_sigs.push(sig);
+    }
+
+    //--------------------------------------------------------------
+    // TRANSACTING NODES GENERATE SIGS
+    //--------------------------------------------------------------
+
+    let witnesses: Vec<transaction_msgs::PublicKey> = witness_did_kp
+        .iter()
+        .map(|kp| {
+            let multibase_pub = MethodData::new_multibase(kp.public());
+            if let MethodData::PublicKeyMultibase(mbpub) = multibase_pub {
+                return mbpub
+            }
+            else {
+                panic!("Could not encode public key as multibase")
+            }
+        })
+        .collect();
+
+    let mut transacting_sigs: Vec<signatures::TransactingSig> = Vec::new();
+    for i in 0..transacting_clients.len() {
+        let multibase_pub = MethodData::new_multibase(witness_client[i].get_public_key());
+        let channel_pk_as_multibase: String;
+        if let MethodData::PublicKeyMultibase(mbpub) = multibase_pub {
+            channel_pk_as_multibase = mbpub;
+        }
+        else {
+            panic!("Could not encode public key as multibase")
+        }
+
+        let sig = generate_sigs::generate_transacting_sig(
+            contract.clone(),
+            channel_pk_as_multibase,
+            witness_did_kp[i].clone(),
+            transaction_msgs::WitnessClients(witnesses.clone()),
+            witness_sigs: transaction_msgs::ArrayOfWnSignitures,
+            DEFAULT_TIMEOUT
+        )?;
+        transacting_sigs.push(sig);
+    }
+    
+    return Ok(());
+}
+/* 
 pub async fn transact<'a>(
     transacting_nodes: Vec<ParticipantIdentity>,
     contract: transaction_msgs::Contract,
@@ -123,7 +218,7 @@ pub async fn transact<'a>(
     }
     
     return Ok(());
-}
+} */
 
 
 /* 
