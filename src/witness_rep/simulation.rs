@@ -56,12 +56,12 @@ pub async fn simulation(node_url: &str) -> Result<()> {
                                             .collect(); */
 
     // create channel subscriber instances
-/*     let client = Client::new_from_url(node_url);
+    let client = Client::new_from_url(node_url);
 
     let mut tn_a = Subscriber::new("Transacting Node A", client.clone());
     let mut tn_b = Subscriber::new("Transacting Node B", client.clone());
     let mut wn_a = Subscriber::new("Witness Node A", client.clone());
-    let mut wn_b = Subscriber::new("Witness Node B", client.clone()); */
+    let mut wn_b = Subscriber::new("Witness Node B", client.clone());
 
 /*     let tn_a_id = transaction::ParticipantIdentity{
         channel_client: tn_a.export("pass").await?,
@@ -79,7 +79,7 @@ pub async fn simulation(node_url: &str) -> Result<()> {
         channel_client: wn_b.export("pass").await?,
         did_keypair: did_kps[3].clone() 
     };    */  
-/* 
+
     let transacting_clients: &mut Vec<&mut Subscriber<Client>> = &mut vec![&mut tn_a,&mut  tn_b];
     let witness_clients:&mut Vec<&mut Subscriber<Client>> = &mut vec![&mut wn_a,&mut  wn_b];  
 
@@ -93,7 +93,7 @@ pub async fn simulation(node_url: &str) -> Result<()> {
         })
         .collect::<String>();
     
-    let mut on_a = Author::new(seed, ChannelType::SingleBranch, client.clone()); */
+    let mut on_a = Author::new(seed, ChannelType::SingleBranch, client.clone());
 /*     let on_a_id = transaction::OrganizationIdentity {
         channel_client: on_a,
         did_keypair: did_kps[4].clone()
@@ -129,7 +129,7 @@ pub async fn simulation(node_url: &str) -> Result<()> {
         did_kps[4]
     ).await?; */
 
-    transaction::transact_skel(node_url).await?;
+    transaction::transact_skel(transacting_clients,witness_clients,&mut on_a,).await?;
     return Ok(());
 
 }
