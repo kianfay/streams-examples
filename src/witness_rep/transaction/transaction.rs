@@ -65,9 +65,13 @@ pub async fn transact(
     let ann_address = Address::try_from_bytes(&announcement_link.to_bytes())?;
     for i in 0..transacting_clients.len() {
         transacting_clients[i].receive_announcement(&ann_address).await?;
+        let subscribe_msg = transacting_clients[i].send_subscribe(&ann_address).await?;
+        organization_client.receive_subscribe(&subscribe_msg).await?;
     }
     for i in 0..witness_clients.len() {
         witness_clients[i].receive_announcement(&ann_address).await?;
+        let subscribe_msg = witness_clients[i].send_subscribe(&ann_address).await?;
+        organization_client.receive_subscribe(&subscribe_msg).await?;
     }
 
     let (keyload_a_link, _seq_a_link) =
@@ -161,7 +165,7 @@ pub async fn transact(
     ];
 
     // TN_A sends the transaction
-    let mut prev_msg_link = announcement_link;
+    let mut prev_msg_link = keyload_a_link;
     transacting_clients[0].sync_state().await;
     transacting_clients[1].sync_state().await;
     witness_clients[0].sync_state().await;

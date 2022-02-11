@@ -34,7 +34,7 @@ pub async fn simulation(node_url: &str) -> Result<()> {
     //--------------------------------------------------------------
     
     // create Decentalised Ids (first 4 are participants, 5th is organization)
-    /* let did_details = create_n_dids(5).await?;
+    let did_details = create_n_dids(5).await?;
     
     let did_kps : Vec<&KeyPair> = did_details
                                             .iter()
@@ -53,7 +53,7 @@ pub async fn simulation(node_url: &str) -> Result<()> {
                                                     return String::default();
                                                 }
                                             })
-                                            .collect(); */
+                                            .collect();
 
     // create channel subscriber instances
     let client = Client::new_from_url(node_url);
@@ -105,21 +105,21 @@ pub async fn simulation(node_url: &str) -> Result<()> {
 
     // TODO
 
-/*     let contract_hardcoded = transaction_msgs::Contract {
+    let contract_hardcoded = transaction_msgs::Contract {
         contract_definition: String::from("tn_b allows tn_a to enter in front of it in the lane tn_b is in"),               
         participants: transaction_msgs::TransactingClients(
             Vec::from([did_pubkeys[0].clone(), did_pubkeys[1].clone()])
         ),      
         time: 1643572739,
         location: ((53, 20, 27.036),(6, 15, 2.695)),
-    }; */
+    };
 
     //--------------------------------------------------------------
     // PERFORM THE TRANSACTION WITH CONTRACT 1
     //--------------------------------------------------------------
 
     //transaction::transact(transacting_nodes, witness_nodes, on_a_id, client.clone());
-/*     transaction::transact(
+    transaction::transact(
         contract_hardcoded,
         transacting_clients,
         witness_clients,
@@ -127,9 +127,9 @@ pub async fn simulation(node_url: &str) -> Result<()> {
         did_kps[2..4].to_vec(),
         &mut on_a,
         did_kps[4]
-    ).await?; */
+    ).await?;
 
-    transaction::transact_skel(transacting_clients,witness_clients,&mut on_a,).await?;
-    return Ok(());
+/*     transaction::transact_skel(transacting_clients,witness_clients,&mut on_a,).await?;
+ */    return Ok(());
 
 }
