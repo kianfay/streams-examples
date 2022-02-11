@@ -19,7 +19,7 @@ use identity::{
 };
 
 
-pub async fn sync_all(subs: &mut Vec<&mut Subscriber<Client>>) -> Result<()> {
+pub async fn sync_all(subs: &mut Vec<Subscriber<Client>>) -> Result<()> {
     for sub in subs {
         sub.sync_state().await;
     }
@@ -28,8 +28,8 @@ pub async fn sync_all(subs: &mut Vec<&mut Subscriber<Client>>) -> Result<()> {
 
 pub async fn transact(
     contract: transaction_msgs::Contract,
-    transacting_clients: &mut Vec<&mut Subscriber<Client>>,
-    witness_clients: &mut Vec<&mut Subscriber<Client>>,
+    transacting_clients: &mut Vec<Subscriber<Client>>,
+    witness_clients: &mut Vec<Subscriber<Client>>,
     transacting_did_kp: Vec<&KeyPair>,
     witness_did_kp: Vec<&KeyPair>,
     organization_client: &mut Author<Client>,

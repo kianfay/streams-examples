@@ -40,7 +40,7 @@ async fn main() -> Result<()> {
 
 
     //let annoucement_msg = String::from("4eb9cbc3eec3acac17c06f0fb24492176b71b6e42335288f818df9b988a18d440000000000000000:b8c3f49cf8092dfb156ff829");
-    witness_rep::simulation::simulation(url).await?;
+    witness_rep::simulation::simulation(url, 4, 1.0, 2).await?;
 
 /* 
     println!("\n---------------------------------------");

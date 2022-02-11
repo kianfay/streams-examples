@@ -13,7 +13,7 @@ pub type Key = [u8; 32];
 
 // returns a tuple of the Account and the Stronghold file name
 // in a practical setting, we would return the url and need to fetch it from the tangle
-pub async fn create_n_dids(n: u16) -> Result<Vec<(IotaDocument,(KeyPair,(Key,Key)),Receipt)>> {
+pub async fn create_n_dids(n: usize) -> Result<Vec<(IotaDocument,(KeyPair,(Key,Key)),Receipt)>> {
     let mut did_array = Vec::new();
     for _ in 0..n {
         let did_info = create_and_upload_did().await?;
