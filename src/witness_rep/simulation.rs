@@ -1,27 +1,20 @@
 use crate::witness_rep::{
-    iota_did::create_and_upload_did::{
-        create_n_dids, Key
-    },
-    messages::{
-        message, setup_msgs,
-        signatures, transaction_msgs
-    },
+    iota_did::create_and_upload_did::create_n_dids,
+    messages::transaction_msgs,
     transaction::transaction
 };
-use crate::examples::{verify_messages, ALPH9};
+use crate::examples::{ALPH9};
 
 use iota_streams::{
     app::transport::tangle::client::Client,
     app_channels::api::tangle::{
-        Address, Author, Bytes, ChannelType, MessageContent, Subscriber,
-        UnwrappedMessage, PublicKey
+        Author, ChannelType, Subscriber,
     },
-    core::{println, Result},
-    app::message::HasLink
+    core::Result
 };
 use identity::{
     did::MethodData,
-    crypto::{KeyPair, Ed25519, Sign}
+    crypto::KeyPair
 };
 use rand::Rng;
 
@@ -63,23 +56,6 @@ pub async fn simulation(node_url: &str) -> Result<()> {
     let mut wn_a = Subscriber::new("Witness Node A", client.clone());
     let mut wn_b = Subscriber::new("Witness Node B", client.clone());
 
-/*     let tn_a_id = transaction::ParticipantIdentity{
-        channel_client: tn_a.export("pass").await?,
-        did_keypair: did_kps[0].clone()
-    };
-    let tn_b_id = transaction::ParticipantIdentity{
-        channel_client: tn_b.export("pass").await?,
-        did_keypair: did_kps[1].clone()
-    };
-    let wn_a_id = transaction::ParticipantIdentity{
-        channel_client: wn_a.export("pass").await?,
-        did_keypair: did_kps[2].clone()
-    };
-    let wn_b_id = transaction::ParticipantIdentity{
-        channel_client: wn_b.export("pass").await?,
-        did_keypair: did_kps[3].clone() 
-    };    */  
-
     let transacting_clients: &mut Vec<&mut Subscriber<Client>> = &mut vec![&mut tn_a,&mut  tn_b];
     let witness_clients:&mut Vec<&mut Subscriber<Client>> = &mut vec![&mut wn_a,&mut  wn_b];  
 
@@ -94,10 +70,6 @@ pub async fn simulation(node_url: &str) -> Result<()> {
         .collect::<String>();
     
     let mut on_a = Author::new(seed, ChannelType::SingleBranch, client.clone());
-/*     let on_a_id = transaction::OrganizationIdentity {
-        channel_client: on_a,
-        did_keypair: did_kps[4].clone()
-    }; */
 
     //--------------------------------------------------------------
     // GENERATE CONTRACT 1
@@ -129,7 +101,6 @@ pub async fn simulation(node_url: &str) -> Result<()> {
         did_kps[4]
     ).await?;
 
-/*     transaction::transact_skel(transacting_clients,witness_clients,&mut on_a,).await?;
- */    return Ok(());
+    return Ok(());
 
 }
