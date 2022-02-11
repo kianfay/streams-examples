@@ -34,7 +34,7 @@ pub async fn transact(
     witness_did_kp: Vec<&KeyPair>,
     organization_client: &mut Author<Client>,
     organization_did_kp: &KeyPair
-) -> Result<()> {
+) -> Result<String> {
     const DEFAULT_TIMEOUT : u32 = 60*2; // 2 mins
 
     //--------------------------------------------------------------
@@ -111,7 +111,7 @@ pub async fn transact(
 
     let mut transacting_sigs: Vec<signatures::TransactingSig> = Vec::new();
     for i in 0..transacting_clients.len() {
-        let multibase_pub = MethodData::new_multibase(witness_clients[i].get_public_key());
+        let multibase_pub = MethodData::new_multibase(transacting_clients[i].get_public_key());
         let channel_pk_as_multibase: String;
         if let MethodData::PublicKeyMultibase(mbpub) = multibase_pub {
             channel_pk_as_multibase = mbpub;
@@ -154,10 +154,8 @@ pub async fn transact(
 
     // TN_A sends the transaction
     let mut prev_msg_link = keyload_a_link;
-    transacting_clients[0].sync_state().await;
-    transacting_clients[1].sync_state().await;
-    witness_clients[0].sync_state().await;
-    witness_clients[1].sync_state().await;
+    sync_all(transacting_clients).await?;
+    sync_all(witness_clients).await?;
     let (msg_link, _) = transacting_clients[0].send_signed_packet(
         &prev_msg_link,
         &Bytes(tx_message[0].as_bytes().to_vec()),
@@ -190,15 +188,8 @@ pub async fn transact(
         ];
 
         // WN sends their witness statement
-        println!("here");
-        transacting_clients[0].sync_state().await;
-        println!("here");
-        transacting_clients[1].sync_state().await;
-        println!("here");
-        witness_clients[0].sync_state().await;
-        println!("here");
-        witness_clients[1].sync_state().await;
-        println!("here");
+        sync_all(transacting_clients).await?;
+        sync_all(witness_clients).await?;
         let (msg_link, _) = witness_clients[i].send_signed_packet(
             &prev_msg_link,
             &Bytes(witness_message[0].as_bytes().to_vec()),
@@ -246,5 +237,5 @@ pub async fn transact(
         prev_msg_link = msg_link;
     }
     
-    return Ok(());
+    return Ok(ann_link_string);
 }

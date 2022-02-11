@@ -36,7 +36,6 @@ pub fn generate_witness_sig(
         signer_channel_pubkey: channel_pk_as_multibase.clone(),
         timeout: timeout,
     };
-    println!("IMPORTANT: {:?}", wn_pre_sig);
     let wn_pre_sig_bytes = serde_json::to_string(&wn_pre_sig)?;
     let wn_sig_bytes: [u8; 64]  = Ed25519::sign(&String::into_bytes(wn_pre_sig_bytes), did_keypair.private())?;
 

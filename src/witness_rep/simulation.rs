@@ -1,7 +1,8 @@
 use crate::witness_rep::{
     iota_did::create_and_upload_did::create_n_dids,
     messages::transaction_msgs,
-    transaction::transaction
+    transaction::transaction,
+    utility::verify_tx
 };
 use crate::examples::{ALPH9};
 
@@ -55,9 +56,9 @@ pub async fn simulation(node_url: &str) -> Result<()> {
     let mut tn_b = Subscriber::new("Transacting Node B", client.clone());
     let mut wn_a = Subscriber::new("Witness Node A", client.clone());
     let mut wn_b = Subscriber::new("Witness Node B", client.clone());
-
+    
     let transacting_clients: &mut Vec<&mut Subscriber<Client>> = &mut vec![&mut tn_a,&mut  tn_b];
-    let witness_clients:&mut Vec<&mut Subscriber<Client>> = &mut vec![&mut wn_a,&mut  wn_b];  
+    let witness_clients:&mut Vec<&mut Subscriber<Client>> = &mut vec![&mut wn_a,&mut  wn_b];
 
     // generate channel author
     let seed: &str = &(0..81)
@@ -91,7 +92,7 @@ pub async fn simulation(node_url: &str) -> Result<()> {
     //--------------------------------------------------------------
 
     //transaction::transact(transacting_nodes, witness_nodes, on_a_id, client.clone());
-    transaction::transact(
+    let annoucement_msg = transaction::transact(
         contract_hardcoded,
         transacting_clients,
         witness_clients,
@@ -100,6 +101,8 @@ pub async fn simulation(node_url: &str) -> Result<()> {
         &mut on_a,
         did_kps[4]
     ).await?;
+
+    verify_tx::verify_txs(node_url, annoucement_msg).await?;
 
     return Ok(());
 
