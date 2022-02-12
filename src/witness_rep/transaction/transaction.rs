@@ -29,20 +29,20 @@ pub type ParticipantIdentity = Identity<Subscriber<Client>>;
 
 //pub type OrganizationIdentity = Identity<Author<Client>>;
 
-pub fn extract_from_id(id: ParticipantIdentity) -> Result<(Subscriber<Client>, KeyPair)> {
+pub fn extract_from_id(id: &mut ParticipantIdentity) -> Result<(&mut Subscriber<Client>, KeyPair)> {
     match id {
         ParticipantIdentity { 
             channel_client,
             did_key
         } => {
-            let did_keypair = KeyPair::try_from_ed25519_bytes(&did_key)?;
+            let did_keypair = KeyPair::try_from_ed25519_bytes(did_key)?;
             return Ok((channel_client, did_keypair));
         }
     }
 }
 
-pub fn extract_from_ids(ids: Vec<ParticipantIdentity>) -> Result<(Vec<Subscriber<Client>>, Vec<KeyPair>)> {
-    let mut subs: Vec<Subscriber<Client>> = Vec::new();
+pub fn extract_from_ids(ids: &mut Vec<ParticipantIdentity>) -> Result<(Vec<&mut Subscriber<Client>>, Vec<KeyPair>)> {
+    let mut subs: Vec<&mut Subscriber<Client>> = Vec::new();
     let mut kps : Vec<KeyPair>             = Vec::new();
     for id in ids {
         let (sub, kp) = extract_from_id(id)?;
@@ -52,7 +52,7 @@ pub fn extract_from_ids(ids: Vec<ParticipantIdentity>) -> Result<(Vec<Subscriber
     return Ok((subs, kps));
 }
 
-pub async fn sync_all(subs: &mut Vec<Subscriber<Client>>) -> Result<()> {
+pub async fn sync_all(subs: &mut Vec<&mut Subscriber<Client>>) -> Result<()> {
     for sub in subs {
         sub.sync_state().await;
     }
@@ -61,8 +61,8 @@ pub async fn sync_all(subs: &mut Vec<Subscriber<Client>>) -> Result<()> {
 
 pub async fn transact(
     contract: transaction_msgs::Contract,
-    transacting_ids: Vec<ParticipantIdentity>,
-    witness_ids: Vec<ParticipantIdentity>,
+    transacting_ids: &mut Vec<ParticipantIdentity>,
+    witness_ids: &mut Vec<ParticipantIdentity>,
     organization_client: &mut Author<Client>
 ) -> Result<String> {
     const DEFAULT_TIMEOUT : u32 = 60*2; // 2 mins
