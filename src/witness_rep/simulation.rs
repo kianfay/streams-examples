@@ -1,8 +1,8 @@
 use crate::witness_rep::{
-    iota_did::create_and_upload_did::create_n_dids,
+    iota_did::create_and_upload_did::{create_n_dids, Key},
     messages::transaction_msgs,
-    transaction::transaction,
-    utility::verify_tx
+    transaction::transaction::{transact, ParticipantIdentity},
+    utility::verify_tx,
 };
 use crate::examples::{ALPH9};
 
@@ -39,9 +39,9 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
     // create Decentalised Ids (for now, none needed for the organization)
     let did_details = create_n_dids(num_participants).await?;
     
-    let did_kps : Vec<&KeyPair> = did_details
+    let did_kps : Vec<Key> = did_details
                                             .iter()
-                                            .map(|(_, (kp,_), _)| kp)
+                                            .map(|(_, (_,(_, privkey)), _)| *privkey)
                                             .collect();
 
     let did_pubkeys : Vec<String> = did_details
@@ -60,11 +60,15 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
 
     // create channel subscriber instances
     let client = Client::new_from_url(node_url);
-    let participants: &mut Vec<Subscriber<Client>> = &mut Vec::new();
+    let participants: &mut Vec<ParticipantIdentity> = &mut Vec::new();
     for i in 0..num_participants{
         let name = format!("Participant {}", i);
         let tn = Subscriber::new(&name, client.clone());
-        participants.push(tn);
+        let id = ParticipantIdentity {
+            channel_client: tn,
+            did_key: did_kps[i]
+        };
+        participants.push(id);
     }
 
     // generate channel author instance
@@ -82,8 +86,8 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
     // GENERATE GROUPS OF TRANSACATING NODES AND WITNESSES
     //--------------------------------------------------------------
 
-    let transacting_clients: &mut Vec<Subscriber<Client>> = &mut Vec::new();
-    let witness_clients: &mut Vec<Subscriber<Client>> = &mut Vec::new();
+    let mut transacting_clients: Vec<ParticipantIdentity> = Vec::new();
+    let mut witness_clients: Vec<ParticipantIdentity> = Vec::new();
 
     // we select the initiating transacting participant as the first participant
     transacting_clients.push(participants.remove(0));
@@ -159,14 +163,11 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
     //--------------------------------------------------------------
 
     //transaction::transact(transacting_nodes, witness_nodes, on_a_id, client.clone());
-    let annoucement_msg = transaction::transact(
+    let annoucement_msg = transact(
         contract_hardcoded,
         transacting_clients,
         witness_clients,
-        did_kps[0..2].to_vec(),
-        did_kps[2..4].to_vec(),
         &mut on_a,
-        did_kps[4]
     ).await?;
 
     verify_tx::verify_txs(node_url, annoucement_msg).await?;
@@ -174,3 +175,4 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
     return Ok(());
 
 }
+

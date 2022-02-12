@@ -1,3 +1,5 @@
+use crate::witness_rep::utility::verify_tx;
+
 use anyhow::Result;
 
 mod examples;
@@ -39,8 +41,9 @@ async fn main() -> Result<()> {
     examples::single_pub_per_branch::example(url).await?; */
 
 
-    //let annoucement_msg = String::from("4eb9cbc3eec3acac17c06f0fb24492176b71b6e42335288f818df9b988a18d440000000000000000:b8c3f49cf8092dfb156ff829");
-    witness_rep::simulation::simulation(url, 4, 1.0, 2).await?;
+    let annoucement_msg = String::from("7ef5fbaa68868808b65154b311f0872cee627258ebca1ab90a9648849043034e0000000000000000:1d03be69bc0fbaee3b76e0d6");
+    //witness_rep::simulation::simulation(url, 4, 1.0, 2).await?;
+    verify_tx::verify_txs(url, annoucement_msg).await?;
 
 /* 
     println!("\n---------------------------------------");

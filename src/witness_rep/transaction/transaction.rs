@@ -1,8 +1,9 @@
 use crate::witness_rep::{
+    iota_did::create_and_upload_did::Key,
     messages::{
         message, signatures, transaction_msgs
     },
-    transaction::generate_sigs
+    transaction::generate_sigs,
 };
 
 use iota_streams::{
@@ -19,6 +20,38 @@ use identity::{
 };
 
 
+pub struct Identity<C> {
+    pub channel_client: C,
+    pub did_key: Key
+}
+
+pub type ParticipantIdentity = Identity<Subscriber<Client>>;
+
+//pub type OrganizationIdentity = Identity<Author<Client>>;
+
+pub fn extract_from_id(id: ParticipantIdentity) -> Result<(Subscriber<Client>, KeyPair)> {
+    match id {
+        ParticipantIdentity { 
+            channel_client,
+            did_key
+        } => {
+            let did_keypair = KeyPair::try_from_ed25519_bytes(&did_key)?;
+            return Ok((channel_client, did_keypair));
+        }
+    }
+}
+
+pub fn extract_from_ids(ids: Vec<ParticipantIdentity>) -> Result<(Vec<Subscriber<Client>>, Vec<KeyPair>)> {
+    let mut subs: Vec<Subscriber<Client>> = Vec::new();
+    let mut kps : Vec<KeyPair>             = Vec::new();
+    for id in ids {
+        let (sub, kp) = extract_from_id(id)?;
+        subs.push(sub);
+        kps.push(kp);
+    }
+    return Ok((subs, kps));
+}
+
 pub async fn sync_all(subs: &mut Vec<Subscriber<Client>>) -> Result<()> {
     for sub in subs {
         sub.sync_state().await;
@@ -28,16 +61,20 @@ pub async fn sync_all(subs: &mut Vec<Subscriber<Client>>) -> Result<()> {
 
 pub async fn transact(
     contract: transaction_msgs::Contract,
-    transacting_clients: &mut Vec<Subscriber<Client>>,
-    witness_clients: &mut Vec<Subscriber<Client>>,
-    transacting_did_kp: Vec<&KeyPair>,
-    witness_did_kp: Vec<&KeyPair>,
-    organization_client: &mut Author<Client>,
-    organization_did_kp: &KeyPair
+    transacting_ids: Vec<ParticipantIdentity>,
+    witness_ids: Vec<ParticipantIdentity>,
+    organization_client: &mut Author<Client>
 ) -> Result<String> {
     const DEFAULT_TIMEOUT : u32 = 60*2; // 2 mins
 
     //--------------------------------------------------------------
+    //--------------------------------------------------------------
+    // EXTRACT CLIENTS AND KEYPAIRS FROM IDENTITIES
+    //--------------------------------------------------------------
+    let (mut transacting_clients, transacting_did_kp) = extract_from_ids(transacting_ids)?;
+    let (mut witness_clients, witness_did_kp) = extract_from_ids(witness_ids)?;
+
+
     //--------------------------------------------------------------
     // ORGANIZATION SENDS ANOUNCEMENT AND SUBS PROCESS IT
     // (IMITATING A KEYLOAD IN A MULTI-BRANCH/MULTI-PUB CHANNEL)
@@ -154,8 +191,8 @@ pub async fn transact(
 
     // TN_A sends the transaction
     let mut prev_msg_link = keyload_a_link;
-    sync_all(transacting_clients).await?;
-    sync_all(witness_clients).await?;
+    sync_all(&mut transacting_clients).await?;
+    sync_all(&mut witness_clients).await?;
     let (msg_link, _) = transacting_clients[0].send_signed_packet(
         &prev_msg_link,
         &Bytes(tx_message[0].as_bytes().to_vec()),
@@ -188,8 +225,8 @@ pub async fn transact(
         ];
 
         // WN sends their witness statement
-        sync_all(transacting_clients).await?;
-        sync_all(witness_clients).await?;
+        sync_all(&mut transacting_clients).await?;
+        sync_all(&mut witness_clients).await?;
         let (msg_link, _) = witness_clients[i].send_signed_packet(
             &prev_msg_link,
             &Bytes(witness_message[0].as_bytes().to_vec()),
@@ -226,8 +263,8 @@ pub async fn transact(
         ];
 
         // TN sends the compensation transaction
-        sync_all(transacting_clients).await?;
-        sync_all(witness_clients).await?;
+        sync_all(&mut transacting_clients).await?;
+        sync_all(&mut witness_clients).await?;
         let (msg_link, _) = transacting_clients[i].send_signed_packet(
             &prev_msg_link,
             &Bytes(compensation_tx[0].as_bytes().to_vec()),
