@@ -162,7 +162,6 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
     // PERFORM THE TRANSACTION WITH CONTRACT 1
     //--------------------------------------------------------------
 
-    //transaction::transact(transacting_nodes, witness_nodes, on_a_id, client.clone());
     let annoucement_msg = transact(
         contract_hardcoded,
         transacting_clients,
@@ -170,7 +169,7 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
         &mut on_a,
     ).await?;
 
-    verify_tx::verify_txs(node_url, annoucement_msg).await?;
+    verify_tx::verify_txs(node_url, annoucement_msg, seed).await?;
 
     return Ok(());
 

@@ -41,9 +41,9 @@ async fn main() -> Result<()> {
     examples::single_pub_per_branch::example(url).await?; */
 
 
-    let annoucement_msg = String::from("7ef5fbaa68868808b65154b311f0872cee627258ebca1ab90a9648849043034e0000000000000000:1d03be69bc0fbaee3b76e0d6");
-    //witness_rep::simulation::simulation(url, 4, 1.0, 2).await?;
-    verify_tx::verify_txs(url, annoucement_msg).await?;
+    //let annoucement_msg = String::from("7ef5fbaa68868808b65154b311f0872cee627258ebca1ab90a9648849043034e0000000000000000:1d03be69bc0fbaee3b76e0d6");
+    witness_rep::simulation::simulation(url, 4, 1.0, 2).await?;
+
 
 /* 
     println!("\n---------------------------------------");

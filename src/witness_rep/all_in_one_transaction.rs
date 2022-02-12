@@ -495,7 +495,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
 
     // -----------------------------------------------------------------------------
     // Author can now fetch these messages
-    let mut retrieved = on_a.fetch_all_next_msgs().await;
+    let mut retrieved = on_a.fetch_next_msgs().await?;
     println!("\nAuthor found {} messages", retrieved.len());
 
     let mut retrieved_lists = split_retrieved(&mut retrieved, pks);

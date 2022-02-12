@@ -7,8 +7,8 @@ edition = "2018"
 
 [dependencies]
 identity = { git = "https://github.com/iotaledger/identity.rs", branch = "dev", features = ["account"] }
-iota-streams = { git = "https://github.com/iotaledger/streams", branch = "develop" }
-iota-crypto = { git = "https://github.com/iotaledger/crypto.rs", features = ["random","ed25519"], branch = "dev" }
+iota-streams = { git = "https://github.com/iotaledger/streams", branch = "develop", version = "0.1.2"}
+iota-crypto = { git = "https://github.com/iotaledger/crypto.rs", features = ["random","ed25519"], branch = "dev", version = "0.9.1"}
 anyhow = "1.0.40"
 tokio = {version = "1.5"}
 rand = "0.7.3"

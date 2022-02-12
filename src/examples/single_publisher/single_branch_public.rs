@@ -61,7 +61,7 @@ pub async fn example(node_url: &str) -> Result<()> {
     // Receive the announcement message to start listening to the channel
     subscriber.receive_announcement(&ann_address).await?;
 
-    let retrieved = subscriber.fetch_all_next_msgs().await;
+    let retrieved = subscriber.fetch_next_msgs().await?;
     verify_messages(&msg_inputs, retrieved)?;
 
     Ok(())

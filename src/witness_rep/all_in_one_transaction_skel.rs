@@ -268,7 +268,7 @@ pub async fn transact(node_url: &str) -> Result<String> {
     let mut reader = Subscriber::new("Transacting Node A", client.clone());
     let ann_address_2 = Address::from_str(&ann_link_string)?;
     reader.receive_announcement(&ann_address_2).await?;
-    let mut retrieved = reader.fetch_all_next_msgs().await;
+    let mut retrieved = reader.fetch_next_msgs().await?;
     println!("\nAuthor found {} messages", retrieved.len());
 
     let mut retrieved_lists = split_retrieved(&mut retrieved, pks.clone());

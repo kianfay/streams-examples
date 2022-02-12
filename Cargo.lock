@@ -95,6 +95,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94a45b455c14666b85fc40a019e8ab9eb75e3a124e05494f5397122bc9eb06e0"
 
 [[package]]
+name = "async-recursion"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7d78656ba01f1b93024b7c3a0467f1608e4be67d725749fdcd7d2c7678fd7a2"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -725,10 +736,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fc3cb4d91f53b50155bdcfd23f6a4c39ae1969c2ae85982b135750cccaf5fce"
 dependencies = [
  "cfg-if",
- "js-sys",
  "libc",
  "wasi 0.9.0+wasi-snapshot-preview1",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -1161,7 +1170,7 @@ dependencies = [
 [[package]]
 name = "iota-streams"
 version = "0.1.2"
-source = "git+https://github.com/iotaledger/streams?branch=develop#eb1ca1d99d983ce8bbf5e1a6d3a34f253447ba95"
+source = "git+https://github.com/iotaledger/streams?branch=develop#d056588c8c68f4d8e1adca859be27b573c3495c9"
 dependencies = [
  "iota-streams-app",
  "iota-streams-app-channels",
@@ -1174,7 +1183,7 @@ dependencies = [
 [[package]]
 name = "iota-streams-app"
 version = "0.1.2"
-source = "git+https://github.com/iotaledger/streams?branch=develop#eb1ca1d99d983ce8bbf5e1a6d3a34f253447ba95"
+source = "git+https://github.com/iotaledger/streams?branch=develop#d056588c8c68f4d8e1adca859be27b573c3495c9"
 dependencies = [
  "cstr_core",
  "cty",
@@ -1184,14 +1193,15 @@ dependencies = [
  "iota-streams-core",
  "iota-streams-core-edsig",
  "iota-streams-ddml",
- "num_cpus",
 ]
 
 [[package]]
 name = "iota-streams-app-channels"
 version = "0.1.2"
-source = "git+https://github.com/iotaledger/streams?branch=develop#eb1ca1d99d983ce8bbf5e1a6d3a34f253447ba95"
+source = "git+https://github.com/iotaledger/streams?branch=develop#d056588c8c68f4d8e1adca859be27b573c3495c9"
 dependencies = [
+ "async-recursion",
+ "futures",
  "hex",
  "iota-streams-app",
  "iota-streams-core",
@@ -1203,7 +1213,7 @@ dependencies = [
 [[package]]
 name = "iota-streams-core"
 version = "0.1.2"
-source = "git+https://github.com/iotaledger/streams?branch=develop#eb1ca1d99d983ce8bbf5e1a6d3a34f253447ba95"
+source = "git+https://github.com/iotaledger/streams?branch=develop#d056588c8c68f4d8e1adca859be27b573c3495c9"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1219,7 +1229,7 @@ dependencies = [
 [[package]]
 name = "iota-streams-core-edsig"
 version = "0.1.2"
-source = "git+https://github.com/iotaledger/streams?branch=develop#eb1ca1d99d983ce8bbf5e1a6d3a34f253447ba95"
+source = "git+https://github.com/iotaledger/streams?branch=develop#d056588c8c68f4d8e1adca859be27b573c3495c9"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
@@ -1231,7 +1241,7 @@ dependencies = [
 [[package]]
 name = "iota-streams-core-keccak"
 version = "0.1.2"
-source = "git+https://github.com/iotaledger/streams?branch=develop#eb1ca1d99d983ce8bbf5e1a6d3a34f253447ba95"
+source = "git+https://github.com/iotaledger/streams?branch=develop#d056588c8c68f4d8e1adca859be27b573c3495c9"
 dependencies = [
  "iota-streams-core",
  "keccak",
@@ -1240,7 +1250,7 @@ dependencies = [
 [[package]]
 name = "iota-streams-ddml"
 version = "0.1.2"
-source = "git+https://github.com/iotaledger/streams?branch=develop#eb1ca1d99d983ce8bbf5e1a6d3a34f253447ba95"
+source = "git+https://github.com/iotaledger/streams?branch=develop#d056588c8c68f4d8e1adca859be27b573c3495c9"
 dependencies = [
  "hashbrown 0.8.2",
  "iota-streams-core",
