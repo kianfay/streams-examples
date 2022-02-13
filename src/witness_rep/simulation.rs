@@ -1,6 +1,6 @@
 use crate::witness_rep::{
     iota_did::create_and_upload_did::{create_n_dids, Key},
-    messages::transaction_msgs,
+    transaction::generate_contract,
     transaction::transaction::{transact, ParticipantIdentity},
     utility::verify_tx,
 };
@@ -44,20 +44,6 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
                                             .map(|(_, (_,(_, privkey)), _)| *privkey)
                                             .collect();
 
-    let did_pubkeys : Vec<String> = did_details
-                                            .iter()
-                                            .map(|(_, (kp,_), _)| {
-                                                let multibase_pub = MethodData::new_multibase(kp.public());
-
-                                                if let MethodData::PublicKeyMultibase(mbpub) = multibase_pub {
-                                                    return mbpub;
-                                                }
-                                                else {
-                                                    return String::default();
-                                                }
-                                            })
-                                            .collect();
-
     // create channel subscriber instances
     let client = Client::new_from_url(node_url);
     let participants: &mut Vec<ParticipantIdentity> = &mut Vec::new();
@@ -74,25 +60,26 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
     //--------------------------------------------------------------
     // RUN A SIMULATION ITERATION 1
     //--------------------------------------------------------------
-    simulation_iteration(node_url, client.clone(), participants, average_proximity, witness_floor, did_pubkeys.clone()).await?;
+    simulation_iteration(node_url, client.clone(), participants, average_proximity, witness_floor).await?;
 
     //--------------------------------------------------------------
     // RUN A SIMULATION ITERATION 2
     //--------------------------------------------------------------
-    simulation_iteration(node_url, client.clone(), participants, average_proximity, witness_floor, did_pubkeys.clone()).await?;
+    simulation_iteration(node_url, client.clone(), participants, average_proximity, witness_floor).await?;
 
 
     return Ok(());
 
 }
 
+
+// Runs a single iteration of a simualtion
 pub async fn simulation_iteration(
     node_url: &str,
     client: Client,
     mut participants: &mut Vec<ParticipantIdentity>,
     average_proximity: f32,
     witness_floor: usize,
-    did_pubkeys: Vec<String>
 ) -> Result<()> {
 
     //--------------------------------------------------------------
@@ -115,26 +102,17 @@ pub async fn simulation_iteration(
     let (mut transacting_clients, mut witness_clients) = generate_trans_and_witnesses(&mut participants, average_proximity, witness_floor)?;
 
     //--------------------------------------------------------------
-    // GENERATE CONTRACT 1
+    // GENERATE CONTRACT
     //--------------------------------------------------------------
 
-    // TODO
-
-    let contract_hardcoded = transaction_msgs::Contract {
-        contract_definition: String::from("tn_b allows tn_a to enter in front of it in the lane tn_b is in"),               
-        participants: transaction_msgs::TransactingClients(
-            Vec::from([did_pubkeys[0].clone(), did_pubkeys[1].clone()])
-        ),      
-        time: 1643572739,
-        location: ((53, 20, 27.036),(6, 15, 2.695)),
-    };
+    let contract = generate_contract::generate_contract(&mut transacting_clients)?;
 
     //--------------------------------------------------------------
-    // PERFORM THE TRANSACTION WITH CONTRACT 1
+    // PERFORM THE TRANSACTION WITH CONTRACT
     //--------------------------------------------------------------
 
     let annoucement_msg = transact(
-        contract_hardcoded,
+        contract,
         &mut transacting_clients,
         &mut witness_clients,
         &mut on_a,
@@ -150,6 +128,7 @@ pub async fn simulation_iteration(
     return Ok(());
 }
 
+// Generates the transacting nodes and the witnesses for the next simulation
 pub fn generate_trans_and_witnesses(
     participants: &mut Vec<ParticipantIdentity>,
     average_proximity: f32,
