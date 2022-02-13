@@ -18,38 +18,59 @@ use identity::{
     did::MethodData,
     crypto::KeyPair
 };
+use rand::Rng;
 
 
+// The identity captures the channel client and the associated keypair,
+// as well as the keypair associated to the participants DID. It also has their 
+// 'reliability', [0,1], an unambiguous/simplistic measure of the honesty of their
+// actions. A score of 1 means they are always honest, and 0 means always dishonest.
+// A more dishonest participant will more likely to give a either not uphold their
+// half of an agreement, or more likely to give a lazy witness statement (i.e. not
+// depending on the actual event), or to possibly collude or act with malice to 
+// either gain an advantage in monetary or trust score terms (or damage other 
+// participant).
 pub struct Identity<C> {
     pub channel_client: C,
-    pub did_key: Key
+    pub did_key: Key,
+    pub reliability: f32,
 }
 
 pub type ParticipantIdentity = Identity<Subscriber<Client>>;
 
+#[derive(Clone)]
+pub enum LazyMethod {
+    Constant(bool),
+    Random,
+}
+
 //pub type OrganizationIdentity = Identity<Author<Client>>;
 
-pub fn extract_from_id(id: &mut ParticipantIdentity) -> Result<(&mut Subscriber<Client>, KeyPair)> {
+pub fn extract_from_id(id: &mut ParticipantIdentity) -> Result<(&mut Subscriber<Client>, KeyPair, f32)> {
     match id {
         ParticipantIdentity { 
             channel_client,
-            did_key
+            did_key,
+            reliability
         } => {
             let did_keypair = KeyPair::try_from_ed25519_bytes(did_key)?;
-            return Ok((channel_client, did_keypair));
+            return Ok((channel_client, did_keypair,reliability.clone()));
         }
     }
 }
 
-pub fn extract_from_ids(ids: &mut Vec<ParticipantIdentity>) -> Result<(Vec<&mut Subscriber<Client>>, Vec<KeyPair>)> {
-    let mut subs: Vec<&mut Subscriber<Client>> = Vec::new();
-    let mut kps : Vec<KeyPair>             = Vec::new();
+pub fn extract_from_ids(ids: &mut Vec<ParticipantIdentity>) -> Result<(Vec<&mut Subscriber<Client>>, Vec<KeyPair>, Vec<f32>)> {
+    let mut subs: Vec<&mut Subscriber<Client>>  = Vec::new();
+    let mut kps : Vec<KeyPair>                  = Vec::new();
+    let mut rels: Vec<f32>                      = Vec::new();
+
     for id in ids {
-        let (sub, kp) = extract_from_id(id)?;
+        let (sub, kp, rel) = extract_from_id(id)?;
         subs.push(sub);
         kps.push(kp);
+        rels.push(rel);
     }
-    return Ok((subs, kps));
+    return Ok((subs, kps,rels));
 }
 
 pub async fn sync_all(subs: &mut Vec<&mut Subscriber<Client>>) -> Result<()> {
@@ -59,11 +80,49 @@ pub async fn sync_all(subs: &mut Vec<&mut Subscriber<Client>>) -> Result<()> {
     return Ok(());
 }
 
+// The offset parameter is to allow for a node not to be targeted to be made dishonest. 
+// Situations such as the inititation node never acting dishonest require this.
+pub fn get_honest_nodes(participants_reliablity: Vec<f32>, offset: usize) -> Vec<bool>{
+    let mut honest_nodes: Vec<bool> = vec![true; participants_reliablity.len()];
+
+    // for all but the initiating node, who for now we assume to be always acting as honest
+    // because they are paying for everything to go smoothly
+    for i in offset..participants_reliablity.len() {
+
+        // randomly assert if they are acting honest based on their reliability
+        let rand: f32 = rand::thread_rng().gen();
+        println!("Trying transacting node {}. Rand={}", i, rand);
+        let acting_honest: bool = participants_reliablity[i] > rand;
+        if acting_honest {
+            honest_nodes[i] = false;
+        }
+    }
+
+    return honest_nodes;
+}
+
+pub fn lazy_outcome(lazy_method: &LazyMethod) -> bool {
+    return match lazy_method {
+        LazyMethod::Constant(output) => output.clone(),
+        LazyMethod::Random => {
+            let rand: f32 = rand::thread_rng().gen();
+            println!("Trying lazy outcome. Rand={}", rand);
+            if rand > 0.5 {
+                true
+            } else {
+                false
+            }
+        }
+    }
+}
+
+
 pub async fn transact(
     contract: transaction_msgs::Contract,
     transacting_ids: &mut Vec<ParticipantIdentity>,
     witness_ids: &mut Vec<ParticipantIdentity>,
-    organization_client: &mut Author<Client>
+    organization_client: &mut Author<Client>,
+    lazy_method: LazyMethod
 ) -> Result<String> {
     const DEFAULT_TIMEOUT : u32 = 60*2; // 2 mins
 
@@ -71,8 +130,8 @@ pub async fn transact(
     //--------------------------------------------------------------
     // EXTRACT CLIENTS AND KEYPAIRS FROM IDENTITIES
     //--------------------------------------------------------------
-    let (mut transacting_clients, transacting_did_kp) = extract_from_ids(transacting_ids)?;
-    let (mut witness_clients, witness_did_kp) = extract_from_ids(witness_ids)?;
+    let (mut transacting_clients, transacting_did_kp, transacting_reliablity) = extract_from_ids(transacting_ids)?;
+    let (mut witness_clients, witness_did_kp, witness_reliability) = extract_from_ids(witness_ids)?;
 
 
     //--------------------------------------------------------------
@@ -206,7 +265,35 @@ pub async fn transact(
     // (WE GENERATE THE OUTCOME AS PART OF THE SIMULATION)
     //--------------------------------------------------------------
 
-    // TODO
+    // Dishonest transacting nodes still want to get compensated, but are rellying
+    // on lazy (or colluding) witnesses for compensation to be more likely. Reason
+    // being, the counterparty may still compensate them even if they act dishonestly,
+    // but only if the witnesses side with the dishonest node, thus jepordising the 
+    // the conterparties trust score.
+    let honest_tranascting_ids = get_honest_nodes(transacting_reliablity, 1);
+    let honest_witness_ids = get_honest_nodes(witness_reliability, 0);
+
+    // A vector of vectors, the inner a list of the outcomes per participant from
+    // the witnesses point of view.
+    let mut outcomes: Vec<Vec<bool>> = vec![Vec::new(); honest_witness_ids.len()];
+    for i in 0..honest_witness_ids.len() {
+        let honesty_of_wn = honest_witness_ids[i];
+
+        // witness determines the outcome for each participant
+        for j in 0..honest_tranascting_ids.len() {
+            let honesty_of_tn = honest_tranascting_ids[j];
+            
+            // if the witness node is honest, then the output is dependant on whether
+            // the tn was honest. Otherwise, it is either random or a constant. They may
+            // want it to random so the trust score generator has a harder time seeing
+            // their dishonesty.
+            if honesty_of_wn {
+                outcomes[i].push(honesty_of_tn);
+            } else {
+                outcomes[i].push(lazy_outcome(&lazy_method));
+            }
+        }
+    }
 
     //--------------------------------------------------------------
     // WITNESSES SEND THEIR STATMENTS
@@ -216,7 +303,7 @@ pub async fn transact(
 
         // WN's prepares their statement
         let wn_statement = message::Message::WitnessStatement {
-            outcome: true
+            outcome: outcomes[i].clone()
         };
         let wn_statement_string = serde_json::to_string(&wn_statement)?;
 

@@ -1,7 +1,7 @@
 use crate::witness_rep::{
     iota_did::create_and_upload_did::{create_n_dids, Key},
     transaction::generate_contract,
-    transaction::transaction::{transact, ParticipantIdentity},
+    transaction::transaction::{transact, ParticipantIdentity, LazyMethod},
     utility::verify_tx,
 };
 use crate::examples::{ALPH9};
@@ -19,6 +19,7 @@ use identity::{
 };
 use rand::Rng;
 use std::collections::BTreeSet;
+use std::convert::TryInto;
 
 // For now this simulation is capturing the abstract scenario where the initiating participant wishes 
 // to informally buy something from somebody nearby. However, not all people around them are particpants
@@ -28,8 +29,18 @@ use std::collections::BTreeSet;
 // Params:
 //      - average_proximity: [0,1], 1 meaning all participants are in range
 //      - witness_floor: the minimum number of witnesses in a transaction
-pub async fn simulation(node_url: &str, num_participants: usize, average_proximity: f32, witness_floor: usize) -> Result<()> {
+pub async fn simulation(
+    node_url: &str,
+    num_participants: usize,
+    average_proximity: f32,
+    witness_floor: usize,
+    runs: usize,
+    reliability: Vec<f32>
+) -> Result<()> {
 
+    if reliability.len() != num_participants {
+        panic!("Number of elements in 'reliability' parameter must equal the num_participants!")
+    }
     //--------------------------------------------------------------
     //--------------------------------------------------------------
     // CREATE PARTICIPANTS FOR SIMULATION
@@ -52,24 +63,39 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
         let tn = Subscriber::new(&name, client.clone());
         let id = ParticipantIdentity {
             channel_client: tn,
-            did_key: did_kps[i]
+            did_key: did_kps[i],
+            reliability: reliability[i]
         };
         participants.push(id);
     }
 
     //--------------------------------------------------------------
-    // RUN A SIMULATION ITERATION 1
+    // RUN SIMULATION
     //--------------------------------------------------------------
-    simulation_iteration(node_url, client.clone(), participants, average_proximity, witness_floor).await?;
 
-    //--------------------------------------------------------------
-    // RUN A SIMULATION ITERATION 2
-    //--------------------------------------------------------------
-    simulation_iteration(node_url, client.clone(), participants, average_proximity, witness_floor).await?;
+    // generate the lazy methods (currenlty the first half are 
+    // constant true and the second half are random)
+    let lazy_methods: Vec<LazyMethod> = (0..=runs)
+        .map(|x| {
+            if x > runs/2 {
+                LazyMethod::Constant(true)
+            } else {
+                LazyMethod::Random
+            }
+        }).collect::<Vec<LazyMethod>>()
+        .try_into().expect("wrong size iterator");
 
+    for i in 0..runs {
+        simulation_iteration(
+            node_url, client.clone(),
+            participants,
+            average_proximity,
+            witness_floor,
+            lazy_methods[i].clone()
+        ).await?;
+    }
 
     return Ok(());
-
 }
 
 
@@ -80,6 +106,7 @@ pub async fn simulation_iteration(
     mut participants: &mut Vec<ParticipantIdentity>,
     average_proximity: f32,
     witness_floor: usize,
+    lazy_method: LazyMethod
 ) -> Result<()> {
 
     //--------------------------------------------------------------
@@ -116,6 +143,7 @@ pub async fn simulation_iteration(
         &mut transacting_clients,
         &mut witness_clients,
         &mut on_a,
+        lazy_method
     ).await?;
 
     // put the particpants back into the original array
@@ -155,8 +183,8 @@ pub fn generate_trans_and_witnesses(
 
     // The transacting participants now search for witnesses and combine their results.
     // Each iteration of the upper loop is one of the transacting nodes searching for
-    // witnesses. We must work with indexes instead of actual objects to avoid dublicate
-    // versions of the same object, not that Rust would allow that...
+    // witnesses. We must work with indexes instead of actual objects to removing potential
+    // witnesses from the list for transacting nodes of indices larger than 0
     let tn_witnesses_lists: &mut Vec<Vec<usize>> = &mut Vec::new();
 
     for i in 0..transacting_clients_1.len(){
