@@ -71,7 +71,33 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
         participants.push(id);
     }
 
-    // generate channel author instance
+    //--------------------------------------------------------------
+    // RUN A SIMULATION ITERATION 1
+    //--------------------------------------------------------------
+    simulation_iteration(node_url, client.clone(), participants, average_proximity, witness_floor, did_pubkeys.clone()).await?;
+
+    //--------------------------------------------------------------
+    // RUN A SIMULATION ITERATION 2
+    //--------------------------------------------------------------
+    simulation_iteration(node_url, client.clone(), participants, average_proximity, witness_floor, did_pubkeys.clone()).await?;
+
+
+    return Ok(());
+
+}
+
+pub async fn simulation_iteration(
+    node_url: &str,
+    client: Client,
+    mut participants: &mut Vec<ParticipantIdentity>,
+    average_proximity: f32,
+    witness_floor: usize,
+    did_pubkeys: Vec<String>
+) -> Result<()> {
+
+    //--------------------------------------------------------------
+    // NEEDS A NEW AUTHOR TO CREATE A NEW CHANNEL
+    //--------------------------------------------------------------
     let seed: &str = &(0..81)
         .map(|_| {
             ALPH9
@@ -85,6 +111,50 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
     //--------------------------------------------------------------
     // GENERATE GROUPS OF TRANSACATING NODES AND WITNESSES 1
     //--------------------------------------------------------------
+
+    let (mut transacting_clients, mut witness_clients) = generate_trans_and_witnesses(&mut participants, average_proximity, witness_floor)?;
+
+    //--------------------------------------------------------------
+    // GENERATE CONTRACT 1
+    //--------------------------------------------------------------
+
+    // TODO
+
+    let contract_hardcoded = transaction_msgs::Contract {
+        contract_definition: String::from("tn_b allows tn_a to enter in front of it in the lane tn_b is in"),               
+        participants: transaction_msgs::TransactingClients(
+            Vec::from([did_pubkeys[0].clone(), did_pubkeys[1].clone()])
+        ),      
+        time: 1643572739,
+        location: ((53, 20, 27.036),(6, 15, 2.695)),
+    };
+
+    //--------------------------------------------------------------
+    // PERFORM THE TRANSACTION WITH CONTRACT 1
+    //--------------------------------------------------------------
+
+    let annoucement_msg = transact(
+        contract_hardcoded,
+        &mut transacting_clients,
+        &mut witness_clients,
+        &mut on_a,
+    ).await?;
+
+    // put the particpants back into the original array
+    participants.append(&mut transacting_clients);
+    participants.append(&mut witness_clients);
+
+    // verify the transaction
+    verify_tx::verify_txs(node_url, annoucement_msg, seed).await?;
+
+    return Ok(());
+}
+
+pub fn generate_trans_and_witnesses(
+    participants: &mut Vec<ParticipantIdentity>,
+    average_proximity: f32,
+    witness_floor: usize
+) -> Result<(Vec<ParticipantIdentity>,Vec<ParticipantIdentity>)> {
 
     let mut transacting_clients_1: Vec<ParticipantIdentity> = Vec::new();
     let mut witness_clients_1: Vec<ParticipantIdentity> = Vec::new();
@@ -143,146 +213,5 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
         witness_clients_1.push(participants.remove(**witness - i))
     }
 
-    //--------------------------------------------------------------
-    // GENERATE CONTRACT 1
-    //--------------------------------------------------------------
-
-    // TODO
-
-    let contract_hardcoded = transaction_msgs::Contract {
-        contract_definition: String::from("tn_b allows tn_a to enter in front of it in the lane tn_b is in"),               
-        participants: transaction_msgs::TransactingClients(
-            Vec::from([did_pubkeys[0].clone(), did_pubkeys[1].clone()])
-        ),      
-        time: 1643572739,
-        location: ((53, 20, 27.036),(6, 15, 2.695)),
-    };
-
-    //--------------------------------------------------------------
-    // PERFORM THE TRANSACTION WITH CONTRACT 1
-    //--------------------------------------------------------------
-
-    let annoucement_msg = transact(
-        contract_hardcoded,
-        &mut transacting_clients_1,
-        &mut witness_clients_1,
-        &mut on_a,
-    ).await?;
-
-    // put the particpants back into the original array
-    participants.append(&mut transacting_clients_1);
-    participants.append(&mut witness_clients_1);
-
-    // verify the transaction
-    verify_tx::verify_txs(node_url, annoucement_msg, seed).await?;
-
-
-    
-    //--------------------------------------------------------------
-    // NEEDS A NEW AUTHOR TO CREATE A NEW CHANNEL
-    //--------------------------------------------------------------
-
-    // generate a new author because an author can only handle one channel at a time
-    let seed: &str = &(0..81)
-        .map(|_| {
-            ALPH9
-                .chars()
-                .nth(rand::thread_rng().gen_range(0, 27))
-                .unwrap()
-        })
-        .collect::<String>();
-    let mut on_a = Author::new(seed, ChannelType::SingleBranch, client.clone());
-
-    //--------------------------------------------------------------
-    // GENERATE GROUPS OF TRANSACATING NODES AND WITNESSES 2
-    //--------------------------------------------------------------
-
-    let mut transacting_clients_2: Vec<ParticipantIdentity> = Vec::new();
-    let mut witness_clients_2: Vec<ParticipantIdentity> = Vec::new();
-
-    // we select the initiating transacting participant as the first participant
-    transacting_clients_2.push(participants.remove(0));
-    
-    // The initiating transacting participant searches for another to transact with.
-    // Using mod, this section will only finish when one is found, representing the start
-    // of the process
-    let mut count = 0;
-    loop {
-        if average_proximity > rand::thread_rng().gen() {
-            transacting_clients_2.push(participants.remove(count % participants.len()));
-            break;
-        }
-        count = count + 1;
-    }
-
-    // The transacting participants now search for witnesses and combine their results.
-    // Each iteration of the upper loop is one of the transacting nodes searching for
-    // witnesses. We must work with indexes instead of actual objects to avoid dublicate
-    // versions of the same object, not that Rust would allow that...
-    let tn_witnesses_lists: &mut Vec<Vec<usize>> = &mut Vec::new();
-
-    for i in 0..transacting_clients_2.len(){
-        println!("getting {}th witnesses", i);
-        let mut tn_witnesses: Vec<usize> = Vec::new();
-        for j in 0..participants.len(){
-            let rand: f32 = rand::thread_rng().gen();
-            println!("Trying participant {}. Rand={}", j, rand);
-            if average_proximity > rand {
-                tn_witnesses.push(j);
-            }
-        }
-        println!("Found witnesses: {:?}", tn_witnesses);
-        tn_witnesses_lists.push(tn_witnesses);
-    }
-
-    // The transacting participants combine their witnesses, and check if there are enough.
-    // Using BTreeSet because it is ordered
-    let mut set_of_witnesses: BTreeSet<&mut usize> = BTreeSet::new();
-    for witnesses in tn_witnesses_lists{
-        for witness in witnesses{
-            set_of_witnesses.insert(witness);
-        }
-    }
-
-    if set_of_witnesses.len() < witness_floor {
-        panic!("Not enough witnesses were generated.")
-    }
-
-    // convert indices into objects (as it is ordered, we can account for
-    // the changing indices)
-    for (i, witness) in set_of_witnesses.iter().enumerate() {
-        witness_clients_2.push(participants.remove(**witness - i))
-    }
-
-    //--------------------------------------------------------------
-    // GENERATE CONTRACT 2
-    //--------------------------------------------------------------
-
-    // TODO
-
-    let contract_hardcoded = transaction_msgs::Contract {
-        contract_definition: String::from("tn_b allows tn_a to enter in front of it in the lane tn_b is in"),               
-        participants: transaction_msgs::TransactingClients(
-            Vec::from([did_pubkeys[0].clone(), did_pubkeys[1].clone()])
-        ),      
-        time: 1643572739,
-        location: ((53, 20, 27.036),(6, 15, 2.695)),
-    };
-
-    //--------------------------------------------------------------
-    // PERFORM THE TRANSACTION WITH CONTRACT 2
-    //--------------------------------------------------------------
-
-    let annoucement_msg = transact(
-        contract_hardcoded,
-        &mut transacting_clients_2,
-        &mut witness_clients_2,
-        &mut on_a,
-    ).await?;
-
-    verify_tx::verify_txs(node_url, annoucement_msg, seed).await?;
-
-    return Ok(());
-
+    return Ok((transacting_clients_1, witness_clients_1));
 }
-
