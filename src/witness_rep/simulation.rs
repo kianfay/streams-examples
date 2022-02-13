@@ -169,9 +169,11 @@ pub async fn simulation(node_url: &str, num_participants: usize, average_proximi
         &mut on_a,
     ).await?;
 
+    // put the particpants back into the original array
     participants.append(&mut transacting_clients_1);
     participants.append(&mut witness_clients_1);
 
+    // verify the transaction
     verify_tx::verify_txs(node_url, annoucement_msg, seed).await?;
 
 

@@ -273,6 +273,17 @@ pub async fn transact(
         println!("Sent msg from TN_{}: {}, tangle index: {:#}", i, msg_link, msg_link.to_msg_index());
         prev_msg_link = msg_link;
     }
+
+    //--------------------------------------------------------------
+    // THE PARTICIPANTS UNSUBSCRIBE SO THAT THEY CAN SUB TO OTHER CHANNELS
+    //--------------------------------------------------------------
+
+    for i in 0..transacting_clients.len() {
+        transacting_clients[i].unregister();
+    }
+    for i in 0..witness_clients.len() {
+        witness_clients[i].unregister();
+    }
     
     return Ok(ann_link_string);
 }
