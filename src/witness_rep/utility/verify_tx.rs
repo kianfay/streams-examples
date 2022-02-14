@@ -28,7 +28,7 @@ pub enum PublickeyOwner {
     Witness(String)
 }
 
-pub async fn verify_txs(node_url: &str, ann_msg: String, seed: &str) -> Result<bool> {
+pub async fn verify_txs(node_url: &str, ann_msg: String, seed: &str) -> Result<(bool, Vec<String>)> {
     
     // build another client to read the tangle with (the seed must be the same as 
     // one of the subscribers in the channel, which is why the author's seed is needed)
@@ -43,6 +43,8 @@ pub async fn verify_txs(node_url: &str, ann_msg: String, seed: &str) -> Result<b
     let retrieved = reader.fetch_next_msgs().await?;
     //println!("\nAuthor found {} messages", retrieved.len());
     let msgs = extract_msgs::extract_msg(retrieved);
+
+    let only_msgs = msgs.iter().map(|(msg, _)| msg.clone()).collect();
     //println!("{:?}", msgs);
 
     // parse the string into the TransactionMsg/WitnessStatement/CompensationMsg format and check if valid
@@ -64,11 +66,11 @@ pub async fn verify_txs(node_url: &str, ann_msg: String, seed: &str) -> Result<b
 
         println!("Verified status of msg: {}", final_verify);
         if !final_verify {
-            return Ok(false);
+            return Ok((false, only_msgs));
         }
     }
 
-    return Ok(true);
+    return Ok((true, only_msgs));
 }
 
 // Accepts a tuple of a message content and the sender's channel public key.

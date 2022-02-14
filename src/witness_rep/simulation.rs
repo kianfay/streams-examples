@@ -85,16 +85,25 @@ pub async fn simulation(
         }).collect::<Vec<LazyMethod>>()
         .try_into().expect("wrong size iterator");
 
+
+    let mut transaction_msgs: Vec<Vec<String>> = Vec::new();
     for i in 0..runs {
-        simulation_iteration(
+        let (verified, msgs) = simulation_iteration(
             node_url, client.clone(),
             participants,
             average_proximity,
             witness_floor,
             lazy_methods[i].clone()
         ).await?;
+
+        if !verified {
+            panic!("One of the transactions was not verified correctly.")
+        }
+
+        transaction_msgs.push(msgs);
     }
 
+    println!("{:?}", transaction_msgs);
     return Ok(());
 }
 
@@ -107,7 +116,7 @@ pub async fn simulation_iteration(
     average_proximity: f32,
     witness_floor: usize,
     lazy_method: LazyMethod
-) -> Result<()> {
+) -> Result<(bool, Vec<String>)> {
 
     //--------------------------------------------------------------
     // NEEDS A NEW AUTHOR TO CREATE A NEW CHANNEL
@@ -151,9 +160,9 @@ pub async fn simulation_iteration(
     participants.append(&mut witness_clients);
 
     // verify the transaction
-    verify_tx::verify_txs(node_url, annoucement_msg, seed).await?;
+    let verified_and_msgs = verify_tx::verify_txs(node_url, annoucement_msg, seed).await?;
 
-    return Ok(());
+    return Ok(verified_and_msgs);
 }
 
 // Generates the transacting nodes and the witnesses for the next simulation
