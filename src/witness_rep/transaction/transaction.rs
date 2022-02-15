@@ -32,7 +32,18 @@ use rand::Rng;
 // participant).
 pub struct Identity<C> {
     pub channel_client: C,
+    pub id_info: IdInfo
+}
+
+
+pub struct IdInfo {
     pub did_key: Key,
+    pub reliability: f32,
+}
+
+#[derive(Debug)]
+pub struct IdInfoV2 {
+    pub did_pubkey: String,
     pub reliability: f32,
 }
 
@@ -50,8 +61,10 @@ pub fn extract_from_id(id: &mut ParticipantIdentity) -> Result<(&mut Subscriber<
     match id {
         ParticipantIdentity { 
             channel_client,
-            did_key,
-            reliability
+            id_info: IdInfo { 
+                did_key,
+                reliability
+            }
         } => {
             let did_keypair = KeyPair::try_from_ed25519_bytes(did_key)?;
             return Ok((channel_client, did_keypair,reliability.clone()));

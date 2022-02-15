@@ -1,7 +1,7 @@
 use crate::witness_rep::{
     iota_did::create_and_upload_did::{create_n_dids, Key},
     transaction::generate_contract,
-    transaction::transaction::{transact, ParticipantIdentity, LazyMethod},
+    transaction::transaction::{transact, ParticipantIdentity, LazyMethod, IdInfo, IdInfoV2},
     utility::verify_tx,
 };
 use crate::examples::{ALPH9};
@@ -63,8 +63,10 @@ pub async fn simulation(
         let tn = Subscriber::new(&name, client.clone());
         let id = ParticipantIdentity {
             channel_client: tn,
-            did_key: did_kps[i],
-            reliability: reliability[i]
+            id_info: IdInfo {
+                did_key: did_kps[i],
+                reliability: reliability[i]
+            }
         };
         participants.push(id);
     }
@@ -87,8 +89,9 @@ pub async fn simulation(
 
 
     let mut transaction_msgs: Vec<Vec<String>> = Vec::new();
+    let mut transaction_infos: Vec<Vec<IdInfoV2>> = Vec::new();
     for i in 0..runs {
-        let (verified, msgs) = simulation_iteration(
+        let (verified, msgs, id_infos) = simulation_iteration(
             node_url, client.clone(),
             participants,
             average_proximity,
@@ -101,9 +104,20 @@ pub async fn simulation(
         }
 
         transaction_msgs.push(msgs);
+        transaction_infos.push(id_infos);
+
     }
 
-    println!("{:?}", transaction_msgs);
+    // for each run
+    for i in 0..transaction_msgs.len() {
+        // for each message in this run
+        for j in 0..transaction_msgs[i].len() {
+            // print the message and then the id_info of the sender
+            print!("{:?}", transaction_msgs[i][j]);
+            println!("{:?}", transaction_infos[i][j]);
+        }
+    }
+    
     return Ok(());
 }
 
@@ -116,7 +130,7 @@ pub async fn simulation_iteration(
     average_proximity: f32,
     witness_floor: usize,
     lazy_method: LazyMethod
-) -> Result<(bool, Vec<String>)> {
+) -> Result<(bool, Vec<String>, Vec<IdInfoV2>)> {
 
     //--------------------------------------------------------------
     // NEEDS A NEW AUTHOR TO CREATE A NEW CHANNEL
@@ -160,9 +174,13 @@ pub async fn simulation_iteration(
     participants.append(&mut witness_clients);
 
     // verify the transaction
-    let verified_and_msgs = verify_tx::verify_txs(node_url, annoucement_msg, seed).await?;
+    let (verified, msgs, pks) = verify_tx::verify_txs(node_url, annoucement_msg, seed).await?;
 
-    return Ok(verified_and_msgs);
+    // convert the channel pks to did_pubkeys to associate messages to the more relevant pubkey
+    let id_infos: Vec<IdInfoV2> = pks.iter().map(|pk| find_id_info_from_channel_pk(participants, pk.clone()).unwrap().unwrap()).collect();
+
+
+    return Ok((verified, msgs, id_infos));
 }
 
 // Generates the transacting nodes and the witnesses for the next simulation
@@ -230,4 +248,39 @@ pub fn generate_trans_and_witnesses(
     }
 
     return Ok((transacting_clients_1, witness_clients_1));
+}
+
+pub fn find_id_info_from_channel_pk(
+    participants: &mut Vec<ParticipantIdentity>,
+    channel_pk: String
+) -> Result<Option<IdInfoV2>> {
+    for part in participants {
+        match part {
+            ParticipantIdentity {
+                channel_client,
+                id_info: IdInfo {
+                    did_key,
+                    reliability
+                }
+            } => {
+                let multibase_pub = MethodData::new_multibase(channel_client.get_public_key());
+                if let MethodData::PublicKeyMultibase(mbpub) = multibase_pub {
+                    if mbpub == channel_pk {
+                        let did_keypair = KeyPair::try_from_ed25519_bytes(did_key)?;
+                        let multibase_did_pub = MethodData::new_multibase(did_keypair.public());
+                        if let MethodData::PublicKeyMultibase(did_pubkey) = multibase_did_pub {
+                            return Ok(Some(IdInfoV2 {
+                                did_pubkey: did_pubkey,
+                                reliability: reliability.clone()
+                            }));
+                        }
+                    }
+                }
+                else {
+                    panic!("Could not encode public key as multibase")
+                }
+            }
+        }
+    }
+    return Ok(None);
 }

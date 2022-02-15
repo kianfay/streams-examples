@@ -1,6 +1,6 @@
 use crate::witness_rep::{
     messages::transaction_msgs,
-    transaction::transaction::ParticipantIdentity,
+    transaction::transaction::{ParticipantIdentity,IdInfo},
 };
 
 use iota_streams::{
@@ -17,8 +17,10 @@ pub fn generate_contract(transacting_ids: &mut Vec<ParticipantIdentity>) -> Resu
         .iter()
         .map(|ParticipantIdentity {
             channel_client: _,
-            did_key,
-            reliability: _
+            id_info: IdInfo{
+                did_key,
+                reliability: _
+            }
         }| {
             let kp = KeyPair::try_from_ed25519_bytes(did_key)?;
             let multibase_pub = MethodData::new_multibase(kp.public());
